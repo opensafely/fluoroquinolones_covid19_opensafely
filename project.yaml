@@ -1,4 +1,4 @@
-version: '4.0'
+version: '5.0'
 
 actions:
   generate_dataset:
@@ -7,40 +7,40 @@ actions:
       highly_sensitive:
         dataset: output/dataset.csv.gz
 
-  generate_ctc_cases_tendinitis:
-    run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis.py --output output/ctc_data_cases_tendinitis.csv.gz
-    outputs:
-      highly_sensitive:
-        dataset: output/ctc_data_cases_tendinitis.csv.gz
+ # generate_ctc_cases_tendinitis:
+ #  run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis.py --output output/ctc_data_cases_tendinitis.csv.gz
+ #   outputs:
+ #     highly_sensitive:
+ #       dataset: output/ctc_data_cases_tendinitis.csv.gz
 
-  generate_ctc_potential_control_tendinitis:
-    run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis_potential_ctrl.py --output output/ctc_data_potential_controls_tendinitis.csv.gz
-    outputs:
-      highly_sensitive:
-        dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
+ # generate_ctc_potential_control_tendinitis:
+ #  run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis_potential_ctrl.py --output output/ctc_data_potential_controls_tendinitis.csv.gz
+ #   outputs:
+ #     highly_sensitive:
+ #       dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
 
-  match_tendinitis:
-    run: >
-      matching:v1.1.0
-      --cases output/ctc_data_cases_tendinitis.csv.gz
-      --controls output/ctc_data_potential_controls_tendinitis.csv.gz
-      --config '{
-      "matches_per_case": 3,
-      "match_variables": {
-      "sex": "category",
-      "age": 5
-      },
-      "index_date_variable": "tendinitis_case_date",
-      "generate_match_index_date": "no_offset"
-      }'
-    needs: [generate_ctc_cases_tendinitis, generate_ctc_potential_control_tendinitis]
-    outputs:
-      highly_sensitive:
-        matched_cases: output/matched_cases.arrow
-        matched_controls: output/matched_matches.arrow
-        matched_combined: output/matched_combined.arrow
-      moderately_sensitive:
-        report: output/matching_report.txt
+ # match_tendinitis:
+ #   run: >
+ #     matching:v1.1.0
+ #     --cases output/ctc_data_cases_tendinitis.csv.gz
+ #    --controls output/ctc_data_potential_controls_tendinitis.csv.gz
+ #   --config '{
+ #     "matches_per_case": 3,
+ #     "match_variables": {
+ #     "sex": "category",
+ #     "age": 5
+    #   },
+    #   "index_date_variable": "tendinitis_case_date",
+    #   "generate_match_index_date": "no_offset"
+    #   }'
+    # needs: [generate_ctc_cases_tendinitis, generate_ctc_potential_control_tendinitis]
+    # outputs:
+    #   highly_sensitive:
+    #     matched_cases: output/matched_cases.arrow
+    #     matched_controls: output/matched_matches.arrow
+    #     matched_combined: output/matched_combined.arrow
+    #   moderately_sensitive:
+    #     report: output/matching_report.txt
 
 #measures - look at abx prescribing over time
   generate_measure:
@@ -68,5 +68,19 @@ actions:
           chart2: output/cohort/n_events.md
           chart3: output/cohort/missingdata_count_df.md
 
- 
+  run_model:
+    run: r:v2 analysis/iptw_coxph.R
+    needs: [generate_cohort]
+    outputs:
+      moderately_sensitive:
+        chart1:  output/iptw_coxph/age_spline_check.png
+        table1:  output/cohort/aictable_agespline.md
+        chart2:  output/cohort/imd_decile_rough_check.png
+        chart3:  output/cohort/n_hosp_appt_logoddsplot.png
+        chart4:  output/cohort/ps_density_plot.png
+        chart5 : output/cohort/ps_love_plot.png
+        table2:  output/cohort/iptw_cox_model_summary.txt
+        table3:  output/cohort/forest_df.md
+        chart6:  output/cohort/iptw_forest.png
+
  

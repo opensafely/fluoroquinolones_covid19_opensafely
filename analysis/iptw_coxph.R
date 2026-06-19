@@ -1,6 +1,5 @@
 library(tidyverse)
 library(survey)      # for weighted analyses
-library(tableone)    # for checking balance
 library(cobalt)      # for Love plots and diagnostics
 library(lubridate)
 library(splines)
@@ -29,7 +28,7 @@ baseline_vars <- c("sex", "has_diabetes", "harmful_alcohol", "has_had_cancer", "
 #"last_bmi" - group it(?) - this isn't working as currrently don't have bmi sorted
 #"never_smoker" -eg work out what to do with smoking - again to do with Rose/Will
 #"n_hosp_appt_6m",
-#  "year_cohort_prescription" - look at how prescribing changes over time to decide            
+#"year_cohort_prescription" - look at how prescribing changes over time to decide            
 
 #Look at whether age can be used alone or should be modelled with a spline
 
@@ -184,7 +183,7 @@ n_hosp_logoddsplot<- ggplot(df, aes(x = n_hosp_appt_6m, y = log_odds)) +
 
 
 ggsave(plot = n_hosp_logoddsplot,
-filename = "n_hosp_logoddsplot.png",
+filename = "n_hosp_appt_logoddsplot.png",
 path = here::here("output/cohort")
 )
 
@@ -196,6 +195,14 @@ ps.formula <- as.formula(paste("fluoroquinolone_exp ~",
 
 # Subset complete cases
 df_complete <- df %>% drop_na(all_of(c("fluoroquinolone_exp", baseline_vars)))
+
+#Look at df_complete to summary
+
+df_complete %>%
+group_by(fluoroquinolone_exp, event_tendinitis) %>%
+summarise(count = n()) %>%
+  knitr::kable(format = "markdown") %>%
+  writeLines("output/cohort/n_events_tendinitis_complete_covariates_dataset.md")
 
 #Estimate propensity score
 ps_model <- glm(ps.formula,
@@ -262,21 +269,37 @@ dev.off()
 
 #Then once balanced run coxph
 
-iptw_cox_model <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+#Try simple coxph - no weights
+
+cox_model_not_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+                   data = df_complete)
+
+# Model with weighting
+
+iptw_cox_model_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
                    data = df_complete,
                    weights = weight,
                    robust = TRUE)
 
 
-#Try simple coxph
-
-iptw_cox_model_2 <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
-                   data = df_complete)
-
+results <- rbind(
+  data.frame(
+    model = "Unweighted",
+    HR = exp(coef(cox_model_not_weighted)),
+    lower = exp(confint(cox_model_not_weighted))[1],
+    upper = exp(confint(cox_model_not_weighted))[2]
+  ),
+  data.frame(
+    model = "IPTW weighted",
+    HR = exp(coef(iptw_cox_model_weighted)),
+    lower = exp(confint(iptw_cox_model_weighted))[1],
+    upper = exp(confint(iptw_cox_model_weighted))[2]
+  )
+)
 
 #Plot
 
-model_summary <- summary(iptw_cox_model_2)
+model_summary <- summary(iptw_cox_model_weighted)
 
 # Extract HR and CI
 hr <- model_summary$coefficients[, "exp(coef)"]
@@ -284,17 +307,9 @@ conf_low <- model_summary$conf.int[, "lower .95"]
 conf_high <- model_summary$conf.int[, "upper .95"]
 term <- rownames(model_summary$coefficients)
 
-#Look at df_complete
-
-df_complete %>%
-group_by(fluoroquinolone_exp, event_tendinitis) %>%
-summarise(count = n()) %>%
-  knitr::kable(format = "markdown") %>%
-  writeLines("output/cohort/n_events_tendinitis.md")
-
 
 # Save as plain text
-capture.output(summary(iptw_cox_model_2),
+capture.output(summary(iptw_cox_model_weighted),
                file = here::here("output/cohort/iptw_cox_model_summary.txt"))
 
 
@@ -306,18 +321,18 @@ forest_df %>%
   writeLines("output/cohort/forest_df.md")
 
 # Plot
-iptw_forest <- ggplot(forest_df, aes(x = term, y = hr, ymin = conf_low, ymax = conf_high)) +
+iptw_forest <- ggplot(results, aes(x = model, y = HR, ymin = lower, ymax = upper)) +
   geom_pointrange(color = "steelblue") +
   geom_hline(yintercept = 1, linetype = "dashed") +
   scale_y_log10() +
   ylab("Hazard Ratio (log scale)") +
   xlab("") +
   theme_minimal() +
-  ggtitle("Hazard Ratio from IPTW Cox Model")
+  ggtitle("Hazard Ratio from Cox Models")
 
 
 ggsave(plot = iptw_forest,
-filename = "iptw_forest.png",
+filename = "cox_models_tendinitis_forest.png",
 path = here::here("output/cohort")
 )
 
