@@ -187,6 +187,8 @@ filename = "n_hosp_appt_logoddsplot.png",
 path = here::here("output/cohort")
 )
 
+#Will try to calculate a single propensity score for neuropathy and tendinitis rather than duplicate
+
 ps.formula <- as.formula(paste("fluoroquinolone_exp ~",
                                paste(baseline_vars,
                                      collapse = "+")))
@@ -203,6 +205,12 @@ group_by(fluoroquinolone_exp, event_tendinitis) %>%
 summarise(count = n()) %>%
   knitr::kable(format = "markdown") %>%
   writeLines("output/cohort/n_events_tendinitis_complete_covariates_dataset.md")
+
+df_complete %>%
+  group_by(fluoroquinolone_exp, event_neuropathy) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  knitr::kable(format = "markdown") %>%
+  writeLines("output/cohort/n_events_neuropathy_complete_covariates_dataset.md")
 
 #Estimate propensity score
 ps_model <- glm(ps.formula,
@@ -271,59 +279,98 @@ dev.off()
 
 #Try simple coxph - no weights
 
-cox_model_not_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+tendinitis_cox_model_not_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+                   data = df_complete)
+
+neuropathy_cox_model_not_weighted <- coxph(Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
                    data = df_complete)
 
 # Model with weighting
 
-iptw_cox_model_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+tendinitis_iptw_cox_model_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
                    data = df_complete,
                    weights = weight,
                    robust = TRUE)
 
+neuropathy_iptw_cox_model_weighted <- coxph(Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
+                   data = df_complete,
+                   weights = weight,
+                   robust = TRUE)
 
-results <- rbind(
+#Make a helper to extract covariates
+
+extract_hr <- function(model, outcome, model_name) {
+
+  ci <- exp(confint(model))
+
   data.frame(
-    model = "Unweighted",
-    HR = exp(coef(cox_model_not_weighted)),
-    lower = exp(confint(cox_model_not_weighted))[1],
-    upper = exp(confint(cox_model_not_weighted))[2]
+    outcome = outcome,
+    model = model_name,
+    HR = exp(coef(model)),
+    lower = ci[1],
+    upper = ci[2]
+  )
+}
+
+results <- bind_rows(
+  extract_hr(
+    tendinitis_cox_model_not_weighted,
+    "Tendinitis",
+    "Unweighted"
   ),
-  data.frame(
-    model = "IPTW weighted",
-    HR = exp(coef(iptw_cox_model_weighted)),
-    lower = exp(confint(iptw_cox_model_weighted))[1],
-    upper = exp(confint(iptw_cox_model_weighted))[2]
+  extract_hr(
+    tendinitis_iptw_cox_model_weighted,
+    "Tendinitis",
+    "IPTW weighted"
+  ),
+  extract_hr(
+    neuropathy_cox_model_not_weighted,
+    "Neuropathy",
+    "Unweighted"
+  ),
+  extract_hr(
+    neuropathy_iptw_cox_model_weighted,
+    "Neuropathy",
+    "IPTW weighted"
   )
 )
 
 #Plot
 
-model_summary <- summary(iptw_cox_model_weighted)
+# Headline output
 
-# Extract HR and CI
-hr <- model_summary$coefficients[, "exp(coef)"]
-conf_low <- model_summary$conf.int[, "lower .95"]
-conf_high <- model_summary$conf.int[, "upper .95"]
-term <- rownames(model_summary$coefficients)
-
-
-# Save as plain text
-capture.output(summary(iptw_cox_model_weighted),
-               file = here::here("output/cohort/iptw_cox_model_summary.txt"))
-
-
-# Make a tidy dataframe
-forest_df <- tibble(term, hr, conf_low, conf_high)
-
-forest_df %>%
+results %>%
+  mutate(
+    HR_CI = sprintf(
+      "%.2f (%.2f–%.2f)",
+      HR,
+      lower,
+      upper
+    )
+  ) %>%
+  select(outcome, model, HR_CI) %>%
   knitr::kable(format = "markdown") %>%
-  writeLines("output/cohort/forest_df.md")
+  writeLines("output/cohort/cumulative_cox_results.md")
+
+# Save as plain text - diagnostics
+capture.output(summary(tendinitis_cox_model_not_weighted),
+               file = here::here("output/cohort/tendinitis_cox_model_not_weighted_summary.txt"))
+
+capture.output(summary(tendinitis_iptw_cox_model_weighted),
+               file = here::here("output/cohort/tendinitis_iptw_cox_model_weighted_summary.txt"))
+
+capture.output(summary(neuropathy_cox_model_not_weighted),
+               file = here::here("output/cohort/neuropathy_cox_model_not_weighted_summary.txt"))
+
+capture.output(summary(neuropathy_iptw_cox_model_weighted),
+               file = here::here("output/cohort/neuropathy_iptw_cox_model_weighted_summary.txt"))
+
 
 # Plot
 iptw_forest <- ggplot(results, aes(x = model, y = HR, ymin = lower, ymax = upper)) +
   geom_pointrange(color = "steelblue") +
   geom_hline(yintercept = 1, linetype = "dashed") +
+  facet_wrap(~ outcome, scales = "free_x") +
   scale_y_log10() +
   ylab("Hazard Ratio (log scale)") +
   xlab("") +
@@ -332,7 +379,7 @@ iptw_forest <- ggplot(results, aes(x = model, y = HR, ymin = lower, ymax = upper
 
 
 ggsave(plot = iptw_forest,
-filename = "cox_models_tendinitis_forest.png",
+filename = "cox_models_tendinitis_and_neuropathy_forest.png",
 path = here::here("output/cohort")
 )
 

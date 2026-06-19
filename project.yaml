@@ -79,8 +79,13 @@ actions:
         chart3:  output/cohort/n_hosp_appt_logoddsplot.png
         chart4:  output/cohort/ps_density_plot.png
         chart5 : output/cohort/ps_love_plot.png
-        table2:  output/cohort/iptw_cox_model_summary.txt
-        table3:  output/cohort/forest_df.md
-        chart6:  output/cohort/cox_models_tendinitis_forest.png
+        table2:  output/cohort/n_events_tendinitis_complete_covariates_dataset.md
+        table3:  output/cohort/n_events_neuropathy_complete_covariates_dataset.md
+        chart6:  output/cohort/cox_models_tendinitis_and_neuropathy_forest.png
+        table 4:  output/cohort/tendinitis_cox_model_not_weighted_summary.txt
+        table 5:  output/cohort/tendinitis_iptw_cox_model_weighted_summary.txt
+        table 6:  output/cohort/neuropathy_cox_model_not_weighted_summary.txt
+        table 7:  output/cohort/neuropathy_iptw_cox_model_weighted_summary.txt
+        table 8:  output/cohort/cumulative_cox_results.md
 
  
