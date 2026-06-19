@@ -73,7 +73,7 @@ actions:
     needs: [generate_cohort]
     outputs:
       moderately_sensitive:
-        chart1:  output/iptw_coxph/age_spline_check.png
+        chart1:  output/cohort/age_spline_check.png
         table1:  output/cohort/aictable_agespline.md
         chart2:  output/cohort/imd_decile_rough_check.png
         chart3:  output/cohort/n_hosp_appt_logoddsplot.png
@@ -81,6 +81,6 @@ actions:
         chart5 : output/cohort/ps_love_plot.png
         table2:  output/cohort/iptw_cox_model_summary.txt
         table3:  output/cohort/forest_df.md
-        chart6:  output/cohort/iptw_forest.png
+        chart6:  output/cohort/cox_models_tendinitis_forest.png
 
  
