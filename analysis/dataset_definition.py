@@ -14,7 +14,7 @@
 
 #COuld this be one dataset and then another one for CTC?
 
-from ehrql import create_dataset, codelist_from_csv, years, months, weeks, days, show
+from ehrql import create_dataset, codelist_from_csv, years, months, weeks, days, show, case, when
 from ehrql.tables.tpp import patients, medications, practice_registrations, addresses, clinical_events, apcs, ons_deaths
 from codelists import *
 
@@ -50,7 +50,17 @@ combo_outcome_codes = tendinitis_codes + neuropathy_newdx_codes
 
 #Covariate/demographic codes
 
-ethnicity_codelist = codelist_from_csv("codelists/opensafely-ethnicity-snomed-0removed.csv", column="snomedcode", category_column = "Grouping_16")
+ethnicity_codelist_16 = codelist_from_csv(
+    "codelists/opensafely-ethnicity-snomed-0removed.csv",
+    column="snomedcode",
+    category_column="Grouping_16",
+)
+
+ethnicity_codelist_6 = codelist_from_csv(
+    "codelists/opensafely-ethnicity-snomed-0removed.csv", 
+    column="snomedcode", 
+    category_column = "Grouping_6"
+    )
 smoking_clear_codelist = codelist_from_csv("codelists/opensafely-smoking-clear.csv", column = "CTV3Code", category_column = "Category")
 bmi_codelist = codelist_from_csv("codelists/primis-covid19-vacc-uptake-bmi.csv", column = "code")
 harmful_alcohol_codelist = codelist_from_csv("codelists/opensafely-hazardous-alcohol-drinking.csv", column = "code")
@@ -264,15 +274,53 @@ dataset.last_bmi = (
         .numeric_value
 )
 
-dataset.latest_ethnicity_code =(
-    clinical_events.where(clinical_events.snomedct_code.is_in(ethnicity_codelist))
-    .where(clinical_events.date.is_on_or_before(end_date))
-    .sort_by(clinical_events.date)
-    .last_for_patient()
-    .snomedct_code
+#FOllowing work elsewhere on using this codelist and ethnicity 6 and 16. Lots of nas with dummy data. TBC if the same with real data
+
+# Ethnicity 6 categories
+ethnicity6 = clinical_events.where(
+        clinical_events.snomedct_code.is_in(ethnicity_codelist_6)
+    ).where(
+        clinical_events.date.is_on_or_before(end_date)
+    ).sort_by(
+        clinical_events.date
+    ).last_for_patient().snomedct_code.to_category(ethnicity_codelist_6)
+
+dataset.ethnicity6 = case(
+    when(ethnicity6 == "1").then("White"),
+    when(ethnicity6 == "2").then("Mixed"),
+    when(ethnicity6 == "3").then("South Asian"),
+    when(ethnicity6 == "4").then("Black"),
+    when(ethnicity6 == "5").then("Other"),
+    when(ethnicity6 == "6").then("Not stated"),
+    otherwise="Unknown"
 )
-dataset.latest_ethnicity_group = dataset.latest_ethnicity_code.to_category(
-    ethnicity_codelist
+
+# Ethnicity 16 categories
+ethnicity16 = clinical_events.where(clinical_events.snomedct_code.is_in(ethnicity_codelist_16)
+    ).where(
+        clinical_events.date.is_on_or_before(end_date)
+    ).sort_by(
+        clinical_events.date
+    ).last_for_patient().snomedct_code.to_category(ethnicity_codelist_16)
+
+dataset.ethnicity16 = case(
+    when(ethnicity16 == "1").then("White - British"),
+    when(ethnicity16 == "2").then("White - Irish"),
+    when(ethnicity16 == "3").then("White - Other"),
+    when(ethnicity16 == "4").then("Mixed - White/Black Caribbean"),
+    when(ethnicity16 == "5").then("Mixed - White/Black African"),
+    when(ethnicity16 == "6").then("Mixed - White/Asian"),
+    when(ethnicity16 == "7").then("Mixed - Other"),
+    when(ethnicity16 == "8").then("Asian or Asian British - Indian"),
+    when(ethnicity16 == "9").then("Asian or Asian British - Pakistani"),
+    when(ethnicity16 == "10").then("Asian or Asian British - Bangladeshi"),
+    when(ethnicity16 == "11").then("Asian or Asian British - Other"),
+    when(ethnicity16 == "12").then("Black - Caribbean"),    
+    when(ethnicity16 == "13").then("Black - African"),
+    when(ethnicity16 == "14").then("Black - Other"),
+    when(ethnicity16 == "15").then("Other - Chinese"),
+    when(ethnicity16 == "16").then("Other - Other"),
+    otherwise="Unknown"
 )
 
 #Smoking - ctv3 or snomedct? Do I need to use both? Or just one?
