@@ -66,8 +66,6 @@ bmi_codelist = codelist_from_csv("codelists/primis-covid19-vacc-uptake-bmi.csv",
 harmful_alcohol_codelist = codelist_from_csv("codelists/opensafely-hazardous-alcohol-drinking.csv", column = "code")
 
 
-
-
 #Comorbidity codes
 
         #ctv3
@@ -158,9 +156,6 @@ first_cohort_rx = medications.where(
 first_cohort_abx_rx = first_cohort_rx.date
 
 dataset.fluoroquinolone_exp = first_cohort_rx.dmd_code.is_in(fluoroquinolone_codes)
-
-show(dataset.fluoroquinolone_exp)
-
 
 has_registration_1y_before_cohort_abx =  (
     practice_registrations.where(practice_registrations.start_date <= (first_cohort_abx_rx + years(1)))
@@ -254,8 +249,6 @@ dataset.first_neuropathy_diagnosis_date = clinical_events.where(
 ).first_for_patient().date
 
 
-
-
         #Demographics
 dataset.sex = patients.sex
 dataset.age = patients.age_on(first_cohort_abx_rx)
@@ -264,6 +257,7 @@ dataset.imd = addresses.for_patient_on(first_cohort_abx_rx).imd_rounded
 patient_address = addresses.for_patient_on(first_cohort_abx_rx)
 dataset.imd_decile = patient_address.imd_decile
 dataset.date_of_death = ons_deaths.date
+
 #BMI - is this best way to get bmi
 dataset.last_bmi = (
     clinical_events.where(
@@ -332,8 +326,7 @@ most_recent_smoking_code = (
   (clinical_events.where(clinical_events.ctv3_code
   .is_in(clear_smoking_codes))
   .where(
-        clinical_events.date <= first_cohort_abx_rx + days(7)
-    )
+        clinical_events.date.is_on_or_before(first_cohort_abx_rx + days(7)))
   .sort_by(clinical_events.date).last_for_patient()
   .ctv3_code.to_category(clear_smoking_codes))
 )
@@ -357,21 +350,25 @@ dataset.smoking_status = (case(
   otherwise = None)
 )
 
+#Alcohol -Think this is best option - just find those with ever harmful alcohol use
 
 dataset.harmful_alcohol =(
     clinical_events.where(clinical_events.ctv3_code.is_in(harmful_alcohol_codelist))
     .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx))
     .exists_for_patient()
-) #Think this is best option - just find those with ever harmful alcohol use
+) 
 
 
         #Frailty indicators
 
 #n hosp appt last 6 months - these will need to be dynamically set based on when the individual is entered into the study.
 #Cohort this = date of first prescription of either FQ or comparator. SCCS this is date of first tendinitis/peripheral neuropathy
+
 dataset.n_hosp_appt_6m = apcs.where(apcs.admission_date.is_on_or_between(
     (first_cohort_abx_rx - months(6)), (first_cohort_abx_rx - days(1)) 
 )).count_for_patient()
+
+
 #n GP appt last 6 months 
         #Nb to d/w Will/Rose as per here - https://docs.opensafely.org/ehrql/reference/schemas/tpp/#appointments - leave with Rose 1/7
 
@@ -431,5 +428,3 @@ dataset.drug_linked_to_neuropathy_60d_before_abx = medications.where(
         (first_cohort_abx_rx - days(1))
 )
 ).exists_for_patient()
-
-
