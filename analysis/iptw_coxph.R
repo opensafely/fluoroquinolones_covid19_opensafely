@@ -4,6 +4,7 @@ library(cobalt)      # for Love plots and diagnostics
 library(lubridate)
 library(splines)
 library(survminer)
+library(patchwork)
 
 #Positivity - need a non-zero probability of receiving each treatment - IPTW points here - https://bpb-us-w2.wpmucdn.com/u.osu.edu/dist/e/58955/files/2023/11/Best-practices-IPTW.pdf
 
@@ -353,18 +354,21 @@ results %>%
   writeLines("output/cohort/cumulative_cox_results.md")
 
 # Save as plain text - diagnostics
-capture.output(summary(tendinitis_cox_model_not_weighted),
-               file = here::here("output/cohort/tendinitis_cox_model_not_weighted_summary.txt"))
+capture.output(
+  cat("=== Tendinitis: Unweighted ===\n\n"),
+  summary(tendinitis_cox_model_not_weighted),
 
-capture.output(summary(tendinitis_iptw_cox_model_weighted),
-               file = here::here("output/cohort/tendinitis_iptw_cox_model_weighted_summary.txt"))
+  cat("\n\n=== Tendinitis: IPTW Weighted ===\n\n"),
+  summary(tendinitis_iptw_cox_model_weighted),
 
-capture.output(summary(neuropathy_cox_model_not_weighted),
-               file = here::here("output/cohort/neuropathy_cox_model_not_weighted_summary.txt"))
+  cat("\n\n=== Neuropathy: Unweighted ===\n\n"),
+  summary(neuropathy_cox_model_not_weighted),
 
-capture.output(summary(neuropathy_iptw_cox_model_weighted),
-               file = here::here("output/cohort/neuropathy_iptw_cox_model_weighted_summary.txt"))
+  cat("\n\n=== Neuropathy: IPTW Weighted ===\n\n"),
+  summary(neuropathy_iptw_cox_model_weighted),
 
+  file = here::here("output/cohort/all_cox_model_summaries.txt")
+)
 
 # Plot
 iptw_forest <- ggplot(results, aes(x = model, y = HR, ymin = lower, ymax = upper)) +
@@ -383,17 +387,21 @@ filename = "cox_models_tendinitis_and_neuropathy_forest.png",
 path = here::here("output/cohort")
 )
 
-#Km - try with unweighted first then build up
-
+#Km - 
 km_unweighted <- survfit(
   Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
   data = df_complete
 )
 
-ggsurvplot(
+km_unweighted_plot <- ggsurvplot(
   km_unweighted,
-  data = df_complete,
+  data = df_complete, 
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "Unweighted tendinitis survival curve"
 )
+
 
 km_weighted <- survfit(
   Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
@@ -401,11 +409,64 @@ km_weighted <- survfit(
   weights = weight
 )
 
-ggsurvplot(
+km_weighted_plot <- ggsurvplot(
   km_weighted,
   risk.table = TRUE,
   conf.int = TRUE,
   pval = TRUE,
   title = "iptw Survival curves tendinitis",
   ggtheme = theme_minimal()
+)
+
+plot_tendinitis_km <- km_unweighted_plot$plot + km_weighted_plot$plot
+
+ggsave(
+  plot = plot_tendinitis_km,
+  filename = "km_tendinitis_combo_curve.png",
+  path = here::here("output/cohort"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+
+#Neuropathy km
+
+km_neuropathy_unweighted <- survfit(
+  Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
+  data = df_complete
+)
+
+km_unweighted_neuropathy_plot <- ggsurvplot(
+  km_neuropathy_unweighted,
+  data = df_complete, 
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "Unweighted neuropathy survival curve"
+)
+
+km_neuropathy_weighted <- survfit(
+  Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
+  data = df_complete,
+  weights = weight
+  )
+
+km_weighted_neuropathy_plot <- ggsurvplot(
+  km_neuropathy_weighted,
+  data = df_complete, 
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "IPTW weighted neuropathy survival curve"
+)
+
+plot_neuropathy_combo <- km_unweighted_neuropathy_plot$plot + km_weighted_neuropathy_plot$plot
+
+ggsave(
+  plot = plot_neuropathy_combo,
+  filename = "km_neuropathy_combo_curve.png",
+  path = here::here("output/cohort"),
+  width = 8,
+  height = 6,
+  dpi = 300
 )
