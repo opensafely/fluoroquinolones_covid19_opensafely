@@ -268,6 +268,7 @@ dataset.last_bmi = (
         .numeric_value
 )
 
+
 #FOllowing work elsewhere on using this codelist and ethnicity 6 and 16. Lots of nas with dummy data. TBC if the same with real data
 
 # Ethnicity 6 categories
@@ -428,3 +429,5 @@ dataset.drug_linked_to_neuropathy_60d_before_abx = medications.where(
         (first_cohort_abx_rx - days(1))
 )
 ).exists_for_patient()
+
+#Indication for treatment would be good

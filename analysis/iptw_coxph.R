@@ -119,24 +119,24 @@ path = here::here("output/cohort")
 )
 
 #bmi check
-# # Fit logistic regression model
-# #bmi_model <- glm(fluoroquinolone_exp ~ last_bmi, data = df, family = binomial())
+#Fit logistic regression model
+bmi_model <- glm(fluoroquinolone_exp ~ last_bmi, data = df, family = binomial())
 
-# # Create a prediction dataframe over the range of observed BMI
-# #bmi_range <- data.frame(last_bmi = seq(min(df$last_bmi, na.rm = TRUE),
-#                                        max(df$last_bmi, na.rm = TRUE),
-#                                        length.out = 100))
+#Create a prediction dataframe over the range of observed BMI
+bmi_range <- data.frame(last_bmi = seq(min(df$last_bmi, na.rm = TRUE),
+                                       max(df$last_bmi, na.rm = TRUE),
+                                       length.out = 100))
 
-# # Get predicted log-odds (type = "link")
-# #bmi_range$log_odds <- predict(bmi_model, newdata = bmi_range, type = "link")
+#Get predicted log-odds (type = "link")
+bmi_range$log_odds <- predict(bmi_model, newdata = bmi_range, type = "link")
 
-# # Plot
-# bmi_cont_plot<- ggplot(bmi_range, aes(x = last_bmi, y = log_odds)) +
-#   geom_line(color = "darkblue", size = 1) +
-#   labs(title = "Log-odds of fluoroquinolone exposure vs BMI",
-#        x = "Last BMI",
-#        y = "Log-odds (logit)") +
-#   theme_minimal()
+#Plot
+bmi_cont_plot<- ggplot(bmi_range, aes(x = last_bmi, y = log_odds)) +
+  geom_line(color = "darkblue", size = 1) +
+  labs(title = "Log-odds of fluoroquinolone exposure vs BMI",
+       x = "Last BMI",
+       y = "Log-odds (logit)") +
+  theme_minimal()
 
 
 # # BMI cat now
@@ -383,3 +383,15 @@ filename = "cox_models_tendinitis_and_neuropathy_forest.png",
 path = here::here("output/cohort")
 )
 
+#Km - try with unweighted first then build up
+
+km_unweighted <- survfit(
+  Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+  data = df_complete
+)
+
+
+ggsurvplot(
+  km_unweighted,
+  data = df_complete,
+)
