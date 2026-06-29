@@ -27,6 +27,7 @@ end_date = "2024-08-01"  ##TBC
 
 #Exposure codes
 
+
 amoxicillin_codes = codelist_from_csv("codelists/opensafely-amoxicillin-oral.csv", column = "code")
 amox_clavulanicacid_codes = codelist_from_csv("codelists/opensafely-co-amoxiclav-oral.csv", column = "code")
 cefalexin_codes = codelist_from_csv("codelists/opensafely-cefalexin-oral.csv", column = "code")
@@ -60,7 +61,7 @@ ethnicity_codelist_6 = codelist_from_csv(
     category_column = "Grouping_6"
     )
 clear_smoking_codes = codelist_from_csv("codelists/opensafely-smoking-clear.csv", column = "CTV3Code", category_column = "Category")
-bmi_codelist = codelist_from_csv("codelists/primis-covid19-vacc-uptake-bmi.csv", column = "code")
+bmi_codelist = codelist_from_csv("codelists/primis-covid19-vacc-uptake-bmi_stage.csv", column = "code")
 harmful_alcohol_codelist = codelist_from_csv("codelists/opensafely-hazardous-alcohol-drinking.csv", column = "code")
 
 
@@ -256,14 +257,13 @@ patient_address = addresses.for_patient_on(first_cohort_abx_rx)
 dataset.imd_decile = patient_address.imd_decile
 dataset.date_of_death = ons_deaths.date
 
-#BMI - is this best way to get bmi?
-dataset.last_bmi = (
-    clinical_events.where(
-        clinical_events.snomedct_code.is_in(bmi_codelist))
-        .sort_by(clinical_events.date)
-        .last_for_patient()
-        .numeric_value
-)
+# #BMI - is this best way to get bmi?
+# dataset.last_bmi_cat = (
+#     clinical_events.where(
+#         clinical_events.snomedct_code.is_in(bmi_codelist))
+#         .sort_by(clinical_events.date)
+#         .last_for_patient()
+# )
 
 
 #FOllowing work elsewhere on using this codelist and ethnicity 6 and 16. Lots of nas with dummy data. TBC if the same with real data

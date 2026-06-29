@@ -73,16 +73,10 @@
       "sha": "6e96c04ee1a647905be2b410fa2c33d770576bf0"
     },
     "primis-covid19-vacc-uptake-bmi_stage.csv": {
-      "id": "primis-covid19-vacc-uptake/bmi_stage/v2.5",
-      "url": "https://www.opencodelists.org/codelist/primis-covid19-vacc-uptake/bmi_stage/v2.5/",
+      "id": "primis-covid19-vacc-uptake/bmi_stage/5dbdff42",
+      "url": "https://www.opencodelists.org/codelist/primis-covid19-vacc-uptake/bmi_stage/5dbdff42/",
       "downloaded_at": "2026-06-29 10:08:50.541794Z",
       "sha": "7fd744bb94c1789632247a3fc1780910f421b172"
-    },
-    "primis-covid19-vacc-uptake-sev_obesity.csv": {
-      "id": "primis-covid19-vacc-uptake/sev_obesity/v2.5",
-      "url": "https://www.opencodelists.org/codelist/primis-covid19-vacc-uptake/sev_obesity/v2.5/",
-      "downloaded_at": "2026-06-29 10:08:50.631102Z",
-      "sha": "dfe3662bed703c590d1449e604e892cdd7a360c1"
     },
     "opensafely-hazardous-alcohol-drinking.csv": {
       "id": "opensafely/hazardous-alcohol-drinking/6364474b",
