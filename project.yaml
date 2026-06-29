@@ -82,10 +82,9 @@ actions:
         table2:  output/cohort/n_events_tendinitis_complete_covariates_dataset.md
         table3:  output/cohort/n_events_neuropathy_complete_covariates_dataset.md
         chart6:  output/cohort/cox_models_tendinitis_and_neuropathy_forest.png
-        table 4:  output/cohort/tendinitis_cox_model_not_weighted_summary.txt
-        table 5:  output/cohort/tendinitis_iptw_cox_model_weighted_summary.txt
-        table 6:  output/cohort/neuropathy_cox_model_not_weighted_summary.txt
-        table 7:  output/cohort/neuropathy_iptw_cox_model_weighted_summary.txt
-        table 8:  output/cohort/cumulative_cox_results.md
+        table 4:  output/cohort/all_cox_model_summaries.txt
+        table 5:  output/cohort/cumulative_cox_results.md
+        chart7:   output/cohort/km_tendinitis_combo_curve.png
+        chart8:   output/cohort/km_neuropathy_combo_curve.png
 
  

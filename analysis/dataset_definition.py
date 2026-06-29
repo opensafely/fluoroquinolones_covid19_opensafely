@@ -14,13 +14,11 @@
 
 #COuld this be one dataset and then another one for CTC?
 
-from ehrql import create_dataset, codelist_from_csv, years, months, weeks, days, show
+from ehrql import create_dataset, codelist_from_csv, years, months, weeks, days, show, case, when
 from ehrql.tables.tpp import patients, medications, practice_registrations, addresses, clinical_events, apcs, ons_deaths
 from codelists import *
 
-# show(dataset)
-
-#how do I get show to work?
+#To do - get bmi to work
 
 dataset = create_dataset()
 
@@ -50,12 +48,20 @@ combo_outcome_codes = tendinitis_codes + neuropathy_newdx_codes
 
 #Covariate/demographic codes
 
-ethnicity_codelist = codelist_from_csv("codelists/opensafely-ethnicity-snomed-0removed.csv", column="snomedcode", category_column = "Grouping_16")
-smoking_clear_codelist = codelist_from_csv("codelists/opensafely-smoking-clear.csv", column = "CTV3Code", category_column = "Category")
+ethnicity_codelist_16 = codelist_from_csv(
+    "codelists/opensafely-ethnicity-snomed-0removed.csv",
+    column="snomedcode",
+    category_column="Grouping_16",
+)
+
+ethnicity_codelist_6 = codelist_from_csv(
+    "codelists/opensafely-ethnicity-snomed-0removed.csv", 
+    column="snomedcode", 
+    category_column = "Grouping_6"
+    )
+clear_smoking_codes = codelist_from_csv("codelists/opensafely-smoking-clear.csv", column = "CTV3Code", category_column = "Category")
 bmi_codelist = codelist_from_csv("codelists/primis-covid19-vacc-uptake-bmi.csv", column = "code")
 harmful_alcohol_codelist = codelist_from_csv("codelists/opensafely-hazardous-alcohol-drinking.csv", column = "code")
-
-
 
 
 #Comorbidity codes
@@ -149,9 +155,6 @@ first_cohort_abx_rx = first_cohort_rx.date
 
 dataset.fluoroquinolone_exp = first_cohort_rx.dmd_code.is_in(fluoroquinolone_codes)
 
-show(dataset.fluoroquinolone_exp)
-
-
 has_registration_1y_before_cohort_abx =  (
     practice_registrations.where(practice_registrations.start_date <= (first_cohort_abx_rx + years(1)))
     .except_where(practice_registrations.end_date < end_date)
@@ -190,7 +193,7 @@ dataset.define_population(
     ~(prior_tendinitis_or_neuropathy) 
     )
 
-dataset.configure_dummy_data(population_size=100000)
+dataset.configure_dummy_data(population_size=10000, timeout = 120)
 
         #Medication options - no longer needed - just use cohort first abx rx
 
@@ -244,8 +247,6 @@ dataset.first_neuropathy_diagnosis_date = clinical_events.where(
 ).first_for_patient().date
 
 
-
-
         #Demographics
 dataset.sex = patients.sex
 dataset.age = patients.age_on(first_cohort_abx_rx)
@@ -254,88 +255,118 @@ dataset.imd = addresses.for_patient_on(first_cohort_abx_rx).imd_rounded
 patient_address = addresses.for_patient_on(first_cohort_abx_rx)
 dataset.imd_decile = patient_address.imd_decile
 dataset.date_of_death = ons_deaths.date
-#BMI - is this best way to get bmi
+
+#BMI - is this best way to get bmi?
 dataset.last_bmi = (
     clinical_events.where(
         clinical_events.snomedct_code.is_in(bmi_codelist))
-        .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx)) #filter to be before date of prescribing
         .sort_by(clinical_events.date)
         .last_for_patient()
         .numeric_value
 )
 
-dataset.latest_ethnicity_code =(
-    clinical_events.where(clinical_events.snomedct_code.is_in(ethnicity_codelist))
-    .where(clinical_events.date.is_on_or_before(end_date))
-    .sort_by(clinical_events.date)
-    .last_for_patient()
-    .snomedct_code
+
+#FOllowing work elsewhere on using this codelist and ethnicity 6 and 16. Lots of nas with dummy data. TBC if the same with real data
+
+# Ethnicity 6 categories
+ethnicity6 = clinical_events.where(
+        clinical_events.snomedct_code.is_in(ethnicity_codelist_6)
+    ).where(
+        clinical_events.date.is_on_or_before(end_date)
+    ).sort_by(
+        clinical_events.date
+    ).last_for_patient().snomedct_code.to_category(ethnicity_codelist_6)
+
+dataset.ethnicity6 = case(
+    when(ethnicity6 == "1").then("White"),
+    when(ethnicity6 == "2").then("Mixed"),
+    when(ethnicity6 == "3").then("South Asian"),
+    when(ethnicity6 == "4").then("Black"),
+    when(ethnicity6 == "5").then("Other"),
+    when(ethnicity6 == "6").then("Not stated"),
+    otherwise="Unknown"
 )
-dataset.latest_ethnicity_group = dataset.latest_ethnicity_code.to_category(
-    ethnicity_codelist
+
+# Ethnicity 16 categories
+ethnicity16 = clinical_events.where(clinical_events.snomedct_code.is_in(ethnicity_codelist_16)
+    ).where(
+        clinical_events.date.is_on_or_before(end_date)
+    ).sort_by(
+        clinical_events.date
+    ).last_for_patient().snomedct_code.to_category(ethnicity_codelist_16)
+
+dataset.ethnicity16 = case(
+    when(ethnicity16 == "1").then("White - British"),
+    when(ethnicity16 == "2").then("White - Irish"),
+    when(ethnicity16 == "3").then("White - Other"),
+    when(ethnicity16 == "4").then("Mixed - White/Black Caribbean"),
+    when(ethnicity16 == "5").then("Mixed - White/Black African"),
+    when(ethnicity16 == "6").then("Mixed - White/Asian"),
+    when(ethnicity16 == "7").then("Mixed - Other"),
+    when(ethnicity16 == "8").then("Asian or Asian British - Indian"),
+    when(ethnicity16 == "9").then("Asian or Asian British - Pakistani"),
+    when(ethnicity16 == "10").then("Asian or Asian British - Bangladeshi"),
+    when(ethnicity16 == "11").then("Asian or Asian British - Other"),
+    when(ethnicity16 == "12").then("Black - Caribbean"),    
+    when(ethnicity16 == "13").then("Black - African"),
+    when(ethnicity16 == "14").then("Black - Other"),
+    when(ethnicity16 == "15").then("Other - Chinese"),
+    when(ethnicity16 == "16").then("Other - Other"),
+    otherwise="Unknown"
 )
 
-#Smoking - ctv3 or snomedct? Do I need to use both? Or just one?
-#This works but could be improved with a boolean string for never smokers. Q for Will/Rose. Is it possible here to dynamically assign smoking status to N/E/S based on boolean logic and dates?
-# Or do I need to set three columns for never, ex, smoker all T/f
+#Smoking - include prior to first cohort abx prescription and then 7 days after to allow for coding at time of illness
+###############################################################################
+# from https://github.com/opensafely/early-inflammatory-arthritis/blob/069e61712fcc9a0c2ec2804ff36a9b773073291c/analysis/dataset_definition.py#L136
+###############################################################################
+  
+most_recent_smoking_code = (
+  (clinical_events.where(clinical_events.ctv3_code
+  .is_in(clear_smoking_codes))
+  .where(
+        clinical_events.date.is_on_or_before(first_cohort_abx_rx + days(7)))
+  .sort_by(clinical_events.date).last_for_patient()
+  .ctv3_code.to_category(clear_smoking_codes))
+)
 
-#https://github.com/opensafely/disparities-comparison/blob/284fcdfc587eafc858d246b4b4e096b05e4a7b59/analysis/additional_comorbidities.py#L159 - check here - Rose 1/7
+def filter_codes_by_category(codelist, include):
+    return {k:v for k,v in codelist.items() if v in include}
 
-# dataset.latest_smoking_code =(
-#     clinical_events.where(clinical_events.ctv3_code.is_in(smoking_clear_codelist))
-#     .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx))
-#     .sort_by(clinical_events.date)
-#     .last_for_patient()
-#     .ctv3_code
-# )
-# dataset.latest_smoking_group = dataset.latest_smoking_code.to_category(
-#     smoking_clear_codelist #Here i would like to say - if this code = N then look at all patient events in smoking clear and check if there is an E or S
-# )
+ever_smoked = (
+  clinical_events.where(clinical_events.ctv3_code
+  .is_in(filter_codes_by_category(clear_smoking_codes, include = ["S", "E"])))
+  .exists_for_patient()
+)
 
-# dataset.never_smoker = ( 
-#     clinical_events.where(clinical_events.ctv3_code.is_in(smoking_clear_codelist))
-#     .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx))
-#     .where(
-#         (clinical_events.ctv3_code.to_category(smoking_clear_codelist) == "N") & 
-#         (~clinical_events.ctv3_code.to_category(smoking_clear_codelist).is_in(["E","S"]))
-# )
-# .exists_for_patient() #So here we want 'N' only if they have never had a smoking status entered in error
-# )
+dataset.smoking_status = (case(
+  when(most_recent_smoking_code == "S").then("Current"),
+  when((most_recent_smoking_code == "E") 
+  | ((most_recent_smoking_code == "N") 
+  & (ever_smoked == True))).then("Former"),
+  when((most_recent_smoking_code == "N") 
+  & (ever_smoked == False)).then("Never"),
+  otherwise = None)
+)
 
-# last_ex_smoke_date =(
-#     clinical_events.where(clinical_events.ctv3_code.is_in(smoking_clear_codelist))
-#     .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx))
-#     .where(
-#         (clinical_events.ctv3_code.to_category(smoking_clear_codelist) == "E")
-#     )
-#     .date
-# )
-
-# last_smoke_date =(
-#     clinical_events.where(clinical_events.ctv3_code.is_in(smoking_clear_codelist))
-#     .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx))
-#     .where(
-#         (clinical_events.ctv3_code.to_category(smoking_clear_codelist) == "S")
-#     )
-#     .date
-# )
-
-
+#Alcohol -Think this is best option - just find those with ever harmful alcohol use
 
 dataset.harmful_alcohol =(
     clinical_events.where(clinical_events.ctv3_code.is_in(harmful_alcohol_codelist))
     .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx))
     .exists_for_patient()
-) #Think this is best option - just find those with ever harmful alcohol use
+) 
 
 
         #Frailty indicators
 
 #n hosp appt last 6 months - these will need to be dynamically set based on when the individual is entered into the study.
 #Cohort this = date of first prescription of either FQ or comparator. SCCS this is date of first tendinitis/peripheral neuropathy
+
 dataset.n_hosp_appt_6m = apcs.where(apcs.admission_date.is_on_or_between(
     (first_cohort_abx_rx - months(6)), (first_cohort_abx_rx - days(1)) 
 )).count_for_patient()
+
+
 #n GP appt last 6 months 
         #Nb to d/w Will/Rose as per here - https://docs.opensafely.org/ehrql/reference/schemas/tpp/#appointments - leave with Rose 1/7
 
@@ -396,4 +427,4 @@ dataset.drug_linked_to_neuropathy_60d_before_abx = medications.where(
 )
 ).exists_for_patient()
 
-
+#Indication for treatment would be good
