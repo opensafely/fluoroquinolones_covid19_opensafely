@@ -27,6 +27,7 @@ df <- readr::read_csv("output/dataset.csv.gz", col_types = readr::cols(
   bmi_cat = factor(bmi_cat)
   )
 
+
 df <- df %>%
 mutate(
     # Exclude tendinitis diagnoses that occur before prescription

@@ -18,9 +18,7 @@ from ehrql import create_dataset, codelist_from_csv, years, months, weeks, days,
 from ehrql.tables.tpp import patients, medications, practice_registrations, addresses, clinical_events, apcs, ons_deaths
 from codelists import *
 
-# show(dataset)
-
-#how do I get show to work?
+#To do - get bmi to work
 
 dataset = create_dataset()
 
@@ -195,7 +193,7 @@ dataset.define_population(
     ~(prior_tendinitis_or_neuropathy) 
     )
 
-dataset.configure_dummy_data(population_size=100000)
+dataset.configure_dummy_data(population_size=10000, timeout = 120)
 
         #Medication options - no longer needed - just use cohort first abx rx
 
@@ -258,11 +256,10 @@ patient_address = addresses.for_patient_on(first_cohort_abx_rx)
 dataset.imd_decile = patient_address.imd_decile
 dataset.date_of_death = ons_deaths.date
 
-#BMI - is this best way to get bmi
+#BMI - is this best way to get bmi?
 dataset.last_bmi = (
     clinical_events.where(
         clinical_events.snomedct_code.is_in(bmi_codelist))
-        .where(clinical_events.date.is_on_or_before(first_cohort_abx_rx)) #filter to be before date of prescribing
         .sort_by(clinical_events.date)
         .last_for_patient()
         .numeric_value

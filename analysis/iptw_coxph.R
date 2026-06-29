@@ -390,8 +390,22 @@ km_unweighted <- survfit(
   data = df_complete
 )
 
-
 ggsurvplot(
   km_unweighted,
   data = df_complete,
+)
+
+km_weighted <- survfit(
+  Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+  data = df_complete,
+  weights = weight
+)
+
+ggsurvplot(
+  km_weighted,
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "iptw Survival curves tendinitis",
+  ggtheme = theme_minimal()
 )
