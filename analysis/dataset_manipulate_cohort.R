@@ -17,33 +17,16 @@ df <- readr::read_csv("output/dataset.csv.gz", col_types = readr::cols(
     ),
   na = c("", "NA", "na")
  ) %>%
-    mutate(latest_ethnicity_group = recode(latest_ethnicity_group,
-            `1` = "White British",
-    `2` = "White Irish",
-    `3` = "Other White",
-    `4` = "White and Caribbean",
-    `5` = "White and African",
-    `6` = "White and Asian",
-    `7` = "Other mixed",
-    `8` = "Indian",
-    `9` = "Pakistani",
-    `10` = "Bangladeshi",
-    `11` = "Other South Asian",
-    `12` = "Caribbean",
-    `13` = "African",
-    `14` = "Other Black",
-    `15` = "Chinese",
-    `16` = "All other ethnic groups",
-    `17` = "Not stated"), 
+    mutate(
     imd_decile = if_else(imd_decile %in% as.character(1:10), imd_decile, NA_character_),
     imd_decile = factor(imd_decile, levels = as.character(1:10)), #Clean imd_decile: set invalid values to NA, then convert to factor
-  latest_ethnicity_group = factor(latest_ethnicity_group),
   bmi_cat = cut(last_bmi,
                        breaks = c(-Inf, 18.5, 25, 30, Inf),
                        labels = c("Underweight", "Normal", "Overweight", "Obese"),
                        right = FALSE),
   bmi_cat = factor(bmi_cat)
   )
+
 
 df <- df %>%
 mutate(
@@ -104,7 +87,7 @@ group_by(fluoroquinolone_exp) %>%
 #Look at missing data
 #Will need to add smoking, n gp appts
 
-baseline_vars <- c("sex", "age", "last_bmi", "latest_ethnicity_group", "imd_decile", "harmful_alcohol",
+baseline_vars <- c("sex", "age", "last_bmi", "ethnicity16", "imd_decile", "harmful_alcohol",
 "n_hosp_appt_6m",
 "has_diabetes", "has_had_cancer", "has_chronic_liver_disease", "has_chronic_resp_disease",
 "has_dementia", "has_hiv", "has_heart_failure", "has_hemiplegia", "has_multiple_sclerosis", "has_rheumatoid_arthritis", "has_solid_organ_transplant",              

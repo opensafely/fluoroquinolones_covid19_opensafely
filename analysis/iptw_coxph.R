@@ -1,10 +1,10 @@
 library(tidyverse)
 library(survey)      # for weighted analyses
-library(tableone)    # for checking balance
 library(cobalt)      # for Love plots and diagnostics
 library(lubridate)
 library(splines)
 library(survminer)
+library(patchwork)
 
 #Positivity - need a non-zero probability of receiving each treatment - IPTW points here - https://bpb-us-w2.wpmucdn.com/u.osu.edu/dist/e/58955/files/2023/11/Best-practices-IPTW.pdf
 
@@ -29,7 +29,7 @@ baseline_vars <- c("sex", "has_diabetes", "harmful_alcohol", "has_had_cancer", "
 #"last_bmi" - group it(?) - this isn't working as currrently don't have bmi sorted
 #"never_smoker" -eg work out what to do with smoking - again to do with Rose/Will
 #"n_hosp_appt_6m",
-#  "year_cohort_prescription" - look at how prescribing changes over time to decide            
+#"year_cohort_prescription" - look at how prescribing changes over time to decide            
 
 #Look at whether age can be used alone or should be modelled with a spline
 
@@ -120,24 +120,24 @@ path = here::here("output/cohort")
 )
 
 #bmi check
-# # Fit logistic regression model
-# #bmi_model <- glm(fluoroquinolone_exp ~ last_bmi, data = df, family = binomial())
+#Fit logistic regression model
+bmi_model <- glm(fluoroquinolone_exp ~ last_bmi, data = df, family = binomial())
 
-# # Create a prediction dataframe over the range of observed BMI
-# #bmi_range <- data.frame(last_bmi = seq(min(df$last_bmi, na.rm = TRUE),
-#                                        max(df$last_bmi, na.rm = TRUE),
-#                                        length.out = 100))
+#Create a prediction dataframe over the range of observed BMI
+bmi_range <- data.frame(last_bmi = seq(min(df$last_bmi, na.rm = TRUE),
+                                       max(df$last_bmi, na.rm = TRUE),
+                                       length.out = 100))
 
-# # Get predicted log-odds (type = "link")
-# #bmi_range$log_odds <- predict(bmi_model, newdata = bmi_range, type = "link")
+#Get predicted log-odds (type = "link")
+bmi_range$log_odds <- predict(bmi_model, newdata = bmi_range, type = "link")
 
-# # Plot
-# bmi_cont_plot<- ggplot(bmi_range, aes(x = last_bmi, y = log_odds)) +
-#   geom_line(color = "darkblue", size = 1) +
-#   labs(title = "Log-odds of fluoroquinolone exposure vs BMI",
-#        x = "Last BMI",
-#        y = "Log-odds (logit)") +
-#   theme_minimal()
+#Plot
+bmi_cont_plot<- ggplot(bmi_range, aes(x = last_bmi, y = log_odds)) +
+  geom_line(color = "darkblue", size = 1) +
+  labs(title = "Log-odds of fluoroquinolone exposure vs BMI",
+       x = "Last BMI",
+       y = "Log-odds (logit)") +
+  theme_minimal()
 
 
 # # BMI cat now
@@ -184,9 +184,11 @@ n_hosp_logoddsplot<- ggplot(df, aes(x = n_hosp_appt_6m, y = log_odds)) +
 
 
 ggsave(plot = n_hosp_logoddsplot,
-filename = "n_hosp_logoddsplot.png",
+filename = "n_hosp_appt_logoddsplot.png",
 path = here::here("output/cohort")
 )
+
+#Will try to calculate a single propensity score for neuropathy and tendinitis rather than duplicate
 
 ps.formula <- as.formula(paste("fluoroquinolone_exp ~",
                                paste(baseline_vars,
@@ -196,6 +198,20 @@ ps.formula <- as.formula(paste("fluoroquinolone_exp ~",
 
 # Subset complete cases
 df_complete <- df %>% drop_na(all_of(c("fluoroquinolone_exp", baseline_vars)))
+
+#Look at df_complete to summary
+
+df_complete %>%
+group_by(fluoroquinolone_exp, event_tendinitis) %>%
+summarise(count = n()) %>%
+  knitr::kable(format = "markdown") %>%
+  writeLines("output/cohort/n_events_tendinitis_complete_covariates_dataset.md")
+
+df_complete %>%
+  group_by(fluoroquinolone_exp, event_neuropathy) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  knitr::kable(format = "markdown") %>%
+  writeLines("output/cohort/n_events_neuropathy_complete_covariates_dataset.md")
 
 #Estimate propensity score
 ps_model <- glm(ps.formula,
@@ -262,62 +278,195 @@ dev.off()
 
 #Then once balanced run coxph
 
-iptw_cox_model <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+#Try simple coxph - no weights
+
+tendinitis_cox_model_not_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+                   data = df_complete)
+
+neuropathy_cox_model_not_weighted <- coxph(Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
+                   data = df_complete)
+
+# Model with weighting
+
+tendinitis_iptw_cox_model_weighted <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
                    data = df_complete,
                    weights = weight,
                    robust = TRUE)
 
+neuropathy_iptw_cox_model_weighted <- coxph(Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
+                   data = df_complete,
+                   weights = weight,
+                   robust = TRUE)
 
-#Try simple coxph
+#Make a helper to extract covariates
 
-iptw_cox_model_2 <- coxph(Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
-                   data = df_complete)
+extract_hr <- function(model, outcome, model_name) {
 
+  ci <- exp(confint(model))
+
+  data.frame(
+    outcome = outcome,
+    model = model_name,
+    HR = exp(coef(model)),
+    lower = ci[1],
+    upper = ci[2]
+  )
+}
+
+results <- bind_rows(
+  extract_hr(
+    tendinitis_cox_model_not_weighted,
+    "Tendinitis",
+    "Unweighted"
+  ),
+  extract_hr(
+    tendinitis_iptw_cox_model_weighted,
+    "Tendinitis",
+    "IPTW weighted"
+  ),
+  extract_hr(
+    neuropathy_cox_model_not_weighted,
+    "Neuropathy",
+    "Unweighted"
+  ),
+  extract_hr(
+    neuropathy_iptw_cox_model_weighted,
+    "Neuropathy",
+    "IPTW weighted"
+  )
+)
 
 #Plot
 
-model_summary <- summary(iptw_cox_model_2)
+# Headline output
 
-# Extract HR and CI
-hr <- model_summary$coefficients[, "exp(coef)"]
-conf_low <- model_summary$conf.int[, "lower .95"]
-conf_high <- model_summary$conf.int[, "upper .95"]
-term <- rownames(model_summary$coefficients)
-
-#Look at df_complete
-
-df_complete %>%
-group_by(fluoroquinolone_exp, event_tendinitis) %>%
-summarise(count = n()) %>%
+results %>%
+  mutate(
+    HR_CI = sprintf(
+      "%.2f (%.2f–%.2f)",
+      HR,
+      lower,
+      upper
+    )
+  ) %>%
+  select(outcome, model, HR_CI) %>%
   knitr::kable(format = "markdown") %>%
-  writeLines("output/cohort/n_events_tendinitis.md")
+  writeLines("output/cohort/cumulative_cox_results.md")
 
+# Save as plain text - diagnostics
+capture.output(
+  cat("=== Tendinitis: Unweighted ===\n\n"),
+  summary(tendinitis_cox_model_not_weighted),
 
-# Save as plain text
-capture.output(summary(iptw_cox_model_2),
-               file = here::here("output/cohort/iptw_cox_model_summary.txt"))
+  cat("\n\n=== Tendinitis: IPTW Weighted ===\n\n"),
+  summary(tendinitis_iptw_cox_model_weighted),
 
+  cat("\n\n=== Neuropathy: Unweighted ===\n\n"),
+  summary(neuropathy_cox_model_not_weighted),
 
-# Make a tidy dataframe
-forest_df <- tibble(term, hr, conf_low, conf_high)
+  cat("\n\n=== Neuropathy: IPTW Weighted ===\n\n"),
+  summary(neuropathy_iptw_cox_model_weighted),
 
-forest_df %>%
-  knitr::kable(format = "markdown") %>%
-  writeLines("output/cohort/forest_df.md")
+  file = here::here("output/cohort/all_cox_model_summaries.txt")
+)
 
 # Plot
-iptw_forest <- ggplot(forest_df, aes(x = term, y = hr, ymin = conf_low, ymax = conf_high)) +
+iptw_forest <- ggplot(results, aes(x = model, y = HR, ymin = lower, ymax = upper)) +
   geom_pointrange(color = "steelblue") +
   geom_hline(yintercept = 1, linetype = "dashed") +
+  facet_wrap(~ outcome, scales = "free_x") +
   scale_y_log10() +
   ylab("Hazard Ratio (log scale)") +
   xlab("") +
   theme_minimal() +
-  ggtitle("Hazard Ratio from IPTW Cox Model")
+  ggtitle("Hazard Ratio from Cox Models")
 
 
 ggsave(plot = iptw_forest,
-filename = "iptw_forest.png",
+filename = "cox_models_tendinitis_and_neuropathy_forest.png",
 path = here::here("output/cohort")
 )
 
+#Km - 
+km_unweighted <- survfit(
+  Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+  data = df_complete
+)
+
+km_unweighted_plot <- ggsurvplot(
+  km_unweighted,
+  data = df_complete, 
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "Unweighted tendinitis survival curve"
+)
+
+
+km_weighted <- survfit(
+  Surv(time_tendinitis, event_tendinitis) ~ fluoroquinolone_exp,
+  data = df_complete,
+  weights = weight
+)
+
+km_weighted_plot <- ggsurvplot(
+  km_weighted,
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "iptw Survival curves tendinitis",
+  ggtheme = theme_minimal()
+)
+
+plot_tendinitis_km <- km_unweighted_plot$plot + km_weighted_plot$plot
+
+ggsave(
+  plot = plot_tendinitis_km,
+  filename = "km_tendinitis_combo_curve.png",
+  path = here::here("output/cohort"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+
+#Neuropathy km
+
+km_neuropathy_unweighted <- survfit(
+  Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
+  data = df_complete
+)
+
+km_unweighted_neuropathy_plot <- ggsurvplot(
+  km_neuropathy_unweighted,
+  data = df_complete, 
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "Unweighted neuropathy survival curve"
+)
+
+km_neuropathy_weighted <- survfit(
+  Surv(time_neuropathy, event_neuropathy) ~ fluoroquinolone_exp,
+  data = df_complete,
+  weights = weight
+  )
+
+km_weighted_neuropathy_plot <- ggsurvplot(
+  km_neuropathy_weighted,
+  data = df_complete, 
+  risk.table = TRUE,
+  conf.int = TRUE,
+  pval = TRUE,
+  title = "IPTW weighted neuropathy survival curve"
+)
+
+plot_neuropathy_combo <- km_unweighted_neuropathy_plot$plot + km_weighted_neuropathy_plot$plot
+
+ggsave(
+  plot = plot_neuropathy_combo,
+  filename = "km_neuropathy_combo_curve.png",
+  path = here::here("output/cohort"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
