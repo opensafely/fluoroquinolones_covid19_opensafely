@@ -1,90 +1,88 @@
 version: '5.0'
 
 actions:
-  generate_dataset:
-    run: ehrql:v1 generate-dataset analysis/dataset_definition.py --output output/dataset.csv.gz
+  # generate_dataset:
+  #   run: ehrql:v1 generate-dataset analysis/dataset_definition.py --output output/dataset.csv.gz
+  #   outputs:
+  #     highly_sensitive:
+  #       dataset: output/dataset.csv.gz
+
+  generate_ctc_cases_tendinitis:
+    run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis.py --output output/ctc_data_cases_tendinitis.csv.gz
     outputs:
-      highly_sensitive:
-        dataset: output/dataset.csv.gz
+     highly_sensitive:
+       dataset: output/ctc_data_cases_tendinitis.csv.gz
 
- # generate_ctc_cases_tendinitis:
- #  run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis.py --output output/ctc_data_cases_tendinitis.csv.gz
- #   outputs:
- #     highly_sensitive:
- #       dataset: output/ctc_data_cases_tendinitis.csv.gz
+  generate_ctc_potential_control_tendinitis:
+    run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis_potential_ctrl.py --output output/ctc_data_potential_controls_tendinitis.csv.gz
+    outputs:
+     highly_sensitive:
+       dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
 
- # generate_ctc_potential_control_tendinitis:
- #  run: ehrql:v1 generate-dataset analysis/ctc_definition_tendinitis_potential_ctrl.py --output output/ctc_data_potential_controls_tendinitis.csv.gz
- #   outputs:
- #     highly_sensitive:
- #       dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
-
- # match_tendinitis:
- #   run: >
- #     matching:v1.1.0
- #     --cases output/ctc_data_cases_tendinitis.csv.gz
- #    --controls output/ctc_data_potential_controls_tendinitis.csv.gz
- #   --config '{
- #     "matches_per_case": 3,
- #     "match_variables": {
- #     "sex": "category",
- #     "age": 5
-    #   },
-    #   "index_date_variable": "tendinitis_case_date",
-    #   "generate_match_index_date": "no_offset"
-    #   }'
-    # needs: [generate_ctc_cases_tendinitis, generate_ctc_potential_control_tendinitis]
-    # outputs:
-    #   highly_sensitive:
-    #     matched_cases: output/matched_cases.arrow
-    #     matched_controls: output/matched_matches.arrow
-    #     matched_combined: output/matched_combined.arrow
-    #   moderately_sensitive:
-    #     report: output/matching_report.txt
-
-#measures - look at abx prescribing over time
-  generate_measure:
-    run: ehrql:v1 generate-measures analysis/measure_definition.py --output output/measures.csv 
-    needs: [generate_dataset]
+#A bit hacky - but here I extract lots of potentials to generate each an index date, then use table_from_file to extract age, then match further on by index_date, age +/- 5 yrs, sex
+  matching round 1:
+    needs: [generate_ctc_cases_tendinitis, generate_ctc_potential_control_tendinitis]
+    run: >
+      matching:v1.2.4
+      --cases output/ctc_data_cases_tendinitis.csv.gz
+      --controls output/ctc_data_potential_controls_tendinitis.csv.gz
+    config:
+      matches_per_case: 20
+      match_variables:
+        sex: category
+      index_date_variable: index_date
+      generate_match_index_date: no_offset
     outputs:
       moderately_sensitive:
-        measure_csv: output/measures.csv
+        matching_report: output/matching_tendinitis_report.txt
+      highly_sensitive:
+        matched_matches: output/matched_tendinitis_matches.csv.gz
+
+  generate_ages_from_index_dates
+
+# #measures - look at abx prescribing over time
+#   generate_measure:
+#     run: ehrql:v1 generate-measures analysis/measure_definition.py --output output/measures.csv 
+#     needs: [generate_dataset]
+#     outputs:
+#       moderately_sensitive:
+#         measure_csv: output/measures.csv
 
   
-  generate_report:
-     run: r:v2 analysis/abx_time_series.R
-     needs: [generate_measure]
-     outputs:
-      moderately_sensitive:
-        chart1: output/time_plot/abx_quarter_time_plot.png
-        chart2: output/time_plot/outcome_quarter_time_plot.png
+#   generate_report:
+#      run: r:v2 analysis/abx_time_series.R
+#      needs: [generate_measure]
+#      outputs:
+#       moderately_sensitive:
+#         chart1: output/time_plot/abx_quarter_time_plot.png
+#         chart2: output/time_plot/outcome_quarter_time_plot.png
 
-  generate_cohort:
-      run: r:v2 analysis/dataset_manipulate_cohort.R
-      needs: [generate_dataset]
-      outputs:
-        highly_sensitive:
-          chart1: output/dataset_formatted_cohort.csv
-          chart2: output/cohort/n_events.md
-          chart3: output/cohort/missingdata_count_df.md
+#   generate_cohort:
+#       run: r:v2 analysis/dataset_manipulate_cohort.R
+#       needs: [generate_dataset]
+#       outputs:
+#         highly_sensitive:
+#           chart1: output/dataset_formatted_cohort.csv
+#           chart2: output/cohort/n_events.md
+#           chart3: output/cohort/missingdata_count_df.md
 
-  run_model:
-    run: r:v2 analysis/iptw_coxph.R
-    needs: [generate_cohort]
-    outputs:
-      moderately_sensitive:
-        chart1:  output/cohort/age_spline_check.png
-        table1:  output/cohort/aictable_agespline.md
-        chart2:  output/cohort/imd_decile_rough_check.png
-        chart3:  output/cohort/n_hosp_appt_logoddsplot.png
-        chart4:  output/cohort/ps_density_plot.png
-        chart5 : output/cohort/ps_love_plot.png
-        table2:  output/cohort/n_events_tendinitis_complete_covariates_dataset.md
-        table3:  output/cohort/n_events_neuropathy_complete_covariates_dataset.md
-        chart6:  output/cohort/cox_models_tendinitis_and_neuropathy_forest.png
-        table 4:  output/cohort/all_cox_model_summaries.txt
-        table 5:  output/cohort/cumulative_cox_results.md
-        chart7:   output/cohort/km_tendinitis_combo_curve.png
-        chart8:   output/cohort/km_neuropathy_combo_curve.png
+#   run_model:
+#     run: r:v2 analysis/iptw_coxph.R
+#     needs: [generate_cohort]
+#     outputs:
+#       moderately_sensitive:
+#         chart1:  output/cohort/age_spline_check.png
+#         table1:  output/cohort/aictable_agespline.md
+#         chart2:  output/cohort/imd_decile_rough_check.png
+#         chart3:  output/cohort/n_hosp_appt_logoddsplot.png
+#         chart4:  output/cohort/ps_density_plot.png
+#         chart5 : output/cohort/ps_love_plot.png
+#         table2:  output/cohort/n_events_tendinitis_complete_covariates_dataset.md
+#         table3:  output/cohort/n_events_neuropathy_complete_covariates_dataset.md
+#         chart6:  output/cohort/cox_models_tendinitis_and_neuropathy_forest.png
+#         table 4:  output/cohort/all_cox_model_summaries.txt
+#         table 5:  output/cohort/cumulative_cox_results.md
+#         chart7:   output/cohort/km_tendinitis_combo_curve.png
+#         chart8:   output/cohort/km_neuropathy_combo_curve.png
 
  

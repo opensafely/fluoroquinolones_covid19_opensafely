@@ -25,19 +25,8 @@ dataset = create_dataset()
 start_date = "2010-12-01" ##TBC
 end_date = "2024-08-01"  ##TBC
 
-#Exposure codes
 
-amoxicillin_codes = codelist_from_csv("codelists/opensafely-amoxicillin-oral.csv", column = "code")
-amox_clavulanicacid_codes = codelist_from_csv("codelists/opensafely-co-amoxiclav-oral.csv", column = "code")
-cefalexin_codes = codelist_from_csv("codelists/opensafely-cefalexin-oral.csv", column = "code")
-trimethoprim_codes = codelist_from_csv("codelists/opensafely-trimethoprim.csv", column = "code")
-trim_sulfa_codes = codelist_from_csv("codelists/user-jacklsbrist-trimethoprimsulfamethoxazole-dmd.csv", column = "code")
-
-fluoroquinolone_codes = codelist_from_csv("codelists/user-jacklsbrist-fluoroquinolones-dmd.csv", column = "code")
-
-all_abx_codes = amoxicillin_codes + amox_clavulanicacid_codes + cefalexin_codes + trimethoprim_codes + trim_sulfa_codes + fluoroquinolone_codes
-
-#Outcome codes
+# #Outcome codes
 
 tendinitis_codes = codelist_from_csv("codelists/user-jacklsbrist-tendinitis.csv", column = "code")
 neuropathy_newdx_codes = codelist_from_csv("codelists/user-jacklsbrist-peripheral-neuropathy.csv", column = "code")
@@ -56,7 +45,7 @@ tendinitis_case_date = clinical_events.where(clinical_events.snomedct_code.is_in
     #Registration 1y before case status
 
 has_registration_1y_before_start_date =  (
-    practice_registrations.where(practice_registrations.start_date <= (start_date + years(1)))
+    practice_registrations.where(practice_registrations.start_date <= (start_date - years(1)))
     .except_where(practice_registrations.end_date < end_date)
     .exists_for_patient()
 )
@@ -75,74 +64,9 @@ prior_tendinitis = clinical_events.where(
 
 dataset.define_population(
      (patients.exists_for_patient()) &
-     tendinitis_case_date.is_null() & #Exclude those with incidence of either outcome of interest
      has_registration_1y_before_start_date &
     ~(prior_tendinitis) 
     )
 
 dataset.sex = patients.sex
 dataset.configure_dummy_data(population_size=100000)
-
-
-# Locally convert strings to date objects for arithmetic
-start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-
-# Now compute number of days
-N_days = (end_date_obj - start_date_obj).days
-
-# Create a stable patient sequence number
-# We'll combine year, month, and day to get some variation
-patient_sequence = (
-    patients.date_of_birth.year * 10000 +
-    patients.date_of_birth.month * 100 +
-    patients.date_of_birth.day
-)
-
-# Compute offset: mod N_days ensures cycling
-quotient = patient_sequence // N_days
-offset_days = patient_sequence - (quotient * N_days)
-
-# Add offset to start date
-# This is allowed in ehrql using `start_date + offset_days`
-random_date = start_date + days(offset_days)
-
-dataset.tendinitis_case_date = random_date
-dataset.age = patients.age_on(random_date)
-
-#Look for exposure in risk window
-
-        #abx code dictionary for use in functions below
-antibiotic_codelists_dmd = {
-        "amoxicillin": amoxicillin_codes,
-        "amox_clavulanic_acid": amox_clavulanicacid_codes,
-        "cefalexin":cefalexin_codes,
-        "trimethoprim": trimethoprim_codes,
-        "trim_sulfamethoxazole":trim_sulfa_codes,
-
-        "fluoroquinolones": fluoroquinolone_codes
-    
-}
-
-# Define time windows for each period label
-tendinitis_periods = {
-    "risk": (days(30), days(1)),
-    "reference": (days(180), days(151))
-}
-
-
-# Loop over antibiotics and periods
-for antibiotic, codelist in antibiotic_codelists_dmd.items():
-    for period_label, (start_offset, end_offset) in tendinitis_periods.items():
-                setattr(
-                        dataset,
-                        f"{antibiotic}_{period_label}_tendinitis",
-                         medications.where(medications.dmd_code.is_in(codelist))
-                         .where(
-                          medications.date.is_on_or_between(
-                                        tendinitis_case_date - start_offset,
-                                        tendinitis_case_date - end_offset
-                )
-            )
-            .exists_for_patient()
-        )

@@ -53,12 +53,9 @@ tendinitis_case_date = clinical_events.where(clinical_events.snomedct_code.is_in
     #Registration 1y before case status
 
 has_registration_1y_before_tendinitis =  (
-    practice_registrations.where(practice_registrations.start_date <= (tendinitis_case_date + years(1)))
-    .except_where(practice_registrations.end_date < end_date)
+    practice_registrations.where(practice_registrations.start_date <= (tendinitis_case_date - years(1)))
     .exists_for_patient()
 )
-
-dataset.configure_dummy_data(population_size=10000)
 
 #Exclusion criteria - those with prior tendinitis/neuropathy
 
@@ -80,7 +77,7 @@ dataset.define_population(
     )
 
 
-dataset.configure_dummy_data(population_size=1000)
+dataset.configure_dummy_data(population_size=10000)
 
 #Case status
 
@@ -89,7 +86,7 @@ dataset.tendinitis_case = tendinitis_case_date.is_not_null()
 
 dataset.sex = patients.sex
 dataset.age = patients.age_on(tendinitis_case_date) 
-dataset.tendinitis_case_date = tendinitis_case_date
+dataset.index_date = tendinitis_case_date
 
 #Look for exposure in risk window
 
