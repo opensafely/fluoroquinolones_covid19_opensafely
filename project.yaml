@@ -32,10 +32,13 @@ actions:
       index_date_variable: index_date
       generate_match_index_date: no_offset
     outputs:
-      moderately_sensitive:
-        matching_report: output/matching_tendinitis_report.txt
-      highly_sensitive:
-        matched_matches: output/matched_tendinitis_matches.csv.gz
+       highly_sensitive:
+          matched_cases: output/matched_casesmatched_tendinitis.csv.gz
+          matched_controls: output/matched_matches_tendinitis.csv.gz
+          matched_combined: output/matched_combined_tendinitis.csv.gz
+       moderately_sensitive:
+          matching_report: output/matching_report_tendinitis.txt
+     
 
   generate_ages_from_randomindex_dates:
     needs: [generate_ctc_potential_control_tendinitis]
