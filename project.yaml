@@ -31,11 +31,12 @@ actions:
         sex: category
       index_date_variable: index_date
       generate_match_index_date: no_offset
+     output_suffix: _tendinitis
     outputs:
        highly_sensitive:
-          matched_cases: output/matched_casesmatched_tendinitis.csv.gz
-          matched_controls: output/matched_matches_tendinitis.csv.gz
-          matched_combined: output/matched_combined_tendinitis.csv.gz
+          matched_cases: output/matched_cases_tendinitis.arrow
+          matched_controls: output/matched_matches_tendinitis.arrow
+          matched_combined: output/matched_combined_tendinitis.arrow
        moderately_sensitive:
           matching_report: output/matching_report_tendinitis.txt
      
