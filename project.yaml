@@ -19,7 +19,7 @@ actions:
      highly_sensitive:
        dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
 
-  matching round 1:
+  matching_round_1:
     needs: [generate_ctc_cases_tendinitis, generate_ctc_potential_control_tendinitis]
     run: >
       matching:v1.2.4
@@ -31,7 +31,7 @@ actions:
         sex: category
       index_date_variable: index_date
       generate_match_index_date: no_offset
-     output_suffix: _tendinitis
+      output_suffix: _tendinitis
     outputs:
        highly_sensitive:
           matched_cases: output/matched_cases_tendinitis.arrow
