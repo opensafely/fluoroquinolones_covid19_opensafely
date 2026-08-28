@@ -19,7 +19,6 @@ actions:
      highly_sensitive:
        dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
 
-#A bit hacky - but here I extract lots of potentials to generate each an index date, then use table_from_file to extract age, then match further on by index_date, age +/- 5 yrs, sex
   matching round 1:
     needs: [generate_ctc_cases_tendinitis, generate_ctc_potential_control_tendinitis]
     run: >
@@ -38,7 +37,21 @@ actions:
       highly_sensitive:
         matched_matches: output/matched_tendinitis_matches.csv.gz
 
-  generate_ages_from_index_dates
+  generate_ages_from_randomindex_dates:
+    needs: [generate_ctc_potential_control_tendinitis]
+    run: >
+      python:v2 analysis/ctc/append_ctc_controls_index_date.py --output output/ctc_data_ptnl_controls_indexappended.csv.gz
+    outputs:
+     highly_sensitive:
+       dataset: output/ctc_data_ptnl_controls_indexappended.csv.gz
+
+  generate_ctc_controls_withrandom_indexdates:
+    needs: [generate_ages_from_randomindex_dates]
+    run: >
+      ehrql:v1 generate-dataset analysis/ctc/2nd_extraction_controls.py --output output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
+    outputs:
+      highly_sensitive:
+        dataset: output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
 
 # #measures - look at abx prescribing over time
 #   generate_measure:

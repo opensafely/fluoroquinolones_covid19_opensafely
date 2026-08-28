@@ -1,26 +1,6 @@
-######################################
-
-# This script provides the formal specification of the data that will be extracted from
-# the OpenSAFELY database for the case-time-control analysis.
-
-#Jack Stanley
-
-#opensafely exec ehrql:v1 generate-dataset analysis/dataset_definition.py
-
-#nb check https://docs.opensafely.org/case-control-studies/#background
-
-######################################
-
-from ehrql import create_dataset, codelist_from_csv, years, months, weeks, days, show
-from ehrql.tables.tpp import patients, medications, practice_registrations, addresses, clinical_events, apcs, ons_deaths
-from codelists import *
-
-#show(dataset) - how do I get show to work?
-
-dataset = create_dataset()
-
-start_date = "2010-12-01" ##TBC
-end_date = "2024-08-01"  ##TBC
+from ehrql import codelist_from_csv, create_dataset, table_from_file, years, months, weeks, days, show
+from ehrql.tables.tpp import patients, clinical_events, medications
+import datetime
 
 #Exposure codes
 
@@ -41,52 +21,27 @@ neuropathy_newdx_codes = codelist_from_csv("codelists/user-jacklsbrist-periphera
 
 combo_outcome_codes = tendinitis_codes + neuropathy_newdx_codes
 
-        #Include just cases after the start date
+#Here we take the potential controls, to which we have appended a random index date and we calculate their age
+#on the index date to allow us to use age and index date for matching
 
-tendinitis_case_date = clinical_events.where(clinical_events.snomedct_code.is_in(tendinitis_codes )
-).where(
-    clinical_events.date.is_after(start_date)
-).sort_by(
-        clinical_events.date
-).first_for_patient().date
+CONTROLS = "output/ctc_data_ptnl_controls_indexappended.csv.gz"
 
-    #Registration 1y before case status
-
-has_registration_1y_before_tendinitis =  (
-    practice_registrations.where(practice_registrations.start_date <= (tendinitis_case_date - years(1)))
-    .exists_for_patient()
+indexed_controls = table_from_file(
+    CONTROLS,
+    columns={
+        "sex":str,
+        "index_date":datetime.date
+    }
 )
 
-#Exclusion criteria - those with prior tendinitis/neuropathy
+dataset = create_dataset()
+dataset.define_population(indexed_controls.exists_for_patient())
 
-prior_tendinitis = clinical_events.where(
-        clinical_events.snomedct_code.is_in(tendinitis_codes) #Exclude those with pre-existing diagnoses
-).where(
-        clinical_events.date.is_on_or_before(start_date)
-).exists_for_patient()
-
-#Exclusion criteria - drug allergy to those 
-
-#Dataset definition
-
-dataset.define_population(
-     (patients.exists_for_patient()) &
-     tendinitis_case_date.is_not_null() &
-     has_registration_1y_before_tendinitis &
-    ~(prior_tendinitis) 
-    )
-
-
-dataset.configure_dummy_data(population_size=10000)
-
-#Case status
-
-
-dataset.tendinitis_case = tendinitis_case_date.is_not_null()
-
+dataset.index_date = indexed_controls.index_date
+dataset.age = patients.age_on(indexed_controls.index_date) 
 dataset.sex = patients.sex
-dataset.age = patients.age_on(tendinitis_case_date) 
-dataset.index_date = tendinitis_case_date
+
+
 
 #Look for exposure in risk window
 
@@ -118,10 +73,11 @@ for antibiotic, codelist in antibiotic_codelists_dmd.items():
                          medications.where(medications.dmd_code.is_in(codelist))
                          .where(
                           medications.date.is_on_or_between(
-                                        tendinitis_case_date - start_offset,
-                                        tendinitis_case_date - end_offset
+                                        indexed_controls.index_date - start_offset,
+                                        indexed_controls.index_date - end_offset
                 )
             )
             .exists_for_patient()
         )
+
 

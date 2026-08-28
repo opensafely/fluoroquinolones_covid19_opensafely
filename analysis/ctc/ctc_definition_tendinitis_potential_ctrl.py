@@ -16,10 +16,6 @@ from ehrql.tables.tpp import patients, medications, practice_registrations, addr
 from codelists import *
 from datetime import date, timedelta, datetime
 
-
-
-#show(dataset) - how do I get show to work?
-
 dataset = create_dataset()
 
 start_date = "2010-12-01" ##TBC
