@@ -6,6 +6,9 @@ library(lubridate)
 library(tidyr)
 
 ctc_cases_data <- readr::read_csv("output/ctc_data_cases_tendinitis.csv.gz")
+ctc_potential_controls <- readr::read_csv("output/ctc_data_potential_controls_tendinitis.csv.gz")
+ctc_potential_controls_withindex <- readr::read_csv("output/ctc_data_ptnl_controls_indexappended.csv.gz")
+ctc_potential_controls_withindex_and_age <- readr::read_csv("output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz")
 
 ## Make a recreatable list of abx risk/ref
 
@@ -118,3 +121,23 @@ summary_table <- bind_rows(
   theme_minimal()
 
 
+ctc_potential_controls %>%
+summarise(count = n())
+
+ctc_potential_controls %>%
+group_by(sex) %>%
+summarise(count = n())
+
+ctc_potential_controls_withindex_and_age %>%
+summarise(count = n())
+
+ctc_potential_controls_withindex_and_age %>%
+group_by(sex) %>%
+summarise(count = n())
+
+ctc_potential_controls_withindex %>%
+summarise(count = n())
+
+ctc_potential_controls_withindex %>%
+group_by(sex) %>%
+summarise(count = n())

@@ -12,6 +12,8 @@ with gzip.open("output/ctc_data_potential_controls_tendinitis.csv.gz", "rt") as 
     reader = csv.DictReader(f)
     data = list(reader)
 
+print(data[0].keys())
+
 # Generate a random index date
 days = (end_date - start_date).days
 
@@ -21,7 +23,7 @@ for row in data:
 
 # Save the updated data
 with gzip.open(
-    "output/ctc_data_ptnl_controls_indexappended.csv.gz",
+    "output/ctc_data_potential_controls_indexappended.csv.gz",
     "wt",
     newline=""
 ) as f:

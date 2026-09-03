@@ -22,10 +22,10 @@ actions:
   generate_randomindex_dates_forcontrols:
     needs: [generate_ctc_potential_control_tendinitis]
     run: >
-      python:v2 analysis/ctc/append_ctc_potential_controls_index_date.py --output output/ctc_data_ptnl_controls_indexappended.csv.gz
+      python:v2 analysis/ctc/append_ctc_potential_controls_index_date.py --output output/ctc_data_potential_controls_indexappended.csv.gz
     outputs:
      highly_sensitive:
-       dataset: output/ctc_data_ptnl_controls_indexappended.csv.gz
+       dataset: output/ctc_data_potential_controls_indexappended.csv.gz
 
   generate_ages_from_randomindex_dates_forcontrols:
     needs: [generate_randomindex_dates_forcontrols]
@@ -36,13 +36,13 @@ actions:
         dataset: output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
 
   matching:
-    needs: [generate_ctc_cases_tendinitis,  generate_ages_from_randomindex_dates_forcontrols]
+    needs: [generate_ctc_cases_tendinitis,  generate_ctc_potential_control_tendinitis]
     run: >
       matching:v1.2.4
       --cases output/ctc_data_cases_tendinitis.csv.gz
-      --controls output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz        
+      --controls output/ctc_data_potential_controls_tendinitis.csv.gz        
     config:
-      matches_per_case: 20
+      matches_per_case: 3
       match_variables:
         sex: category
       index_date_variable: index_date
@@ -55,7 +55,13 @@ actions:
           matched_combined: output/matched_combined_tendinitis.arrow
        moderately_sensitive:
           matching_report: output/matching_report_tendinitis.txt
-     
+
+  generate_vanilla_ctc:
+    needs: [generate_ctc_cases_tendinitis]
+    run: r:v2 analysis/ctc/ctc_case_crossover_analysis.R
+    outputs:
+      moderately_sensitive:
+        table 1: output/ctc/vanilla_case_crossover_output.md       
 
 # #measures - look at abx prescribing over time
 #   generate_measure:

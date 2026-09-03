@@ -42,7 +42,6 @@ dataset.age = patients.age_on(indexed_controls.index_date)
 dataset.sex = patients.sex
 
 
-
 #Look for exposure in risk window
 
         #abx code dictionary for use in functions below

@@ -1,6 +1,10 @@
 library(dplyr)
 library(tibble)
 library(purrr)
+library(readr)
+library(tidyverse)
+library(tidyr)
+library(stringr)
 
 ctc_cases_data <- readr::read_csv("output/ctc_data_cases_tendinitis.csv.gz")
 
@@ -25,14 +29,14 @@ calculate_cc_or <- function(data, antibiotic) {
       .data[[reference_var]]
     )
   
-  b <- cc %>%
+  exp_risk_unexp_ref <- cc %>%
     filter(
       .data[[risk_var]] == TRUE,
       .data[[reference_var]] == FALSE
     ) %>%
     pull(n)
   
-  c <- cc %>%
+  unexp_risk_exp_ref <- cc %>%
     filter(
       .data[[risk_var]] == FALSE,
       .data[[reference_var]] == TRUE
@@ -40,12 +44,12 @@ calculate_cc_or <- function(data, antibiotic) {
     pull(n)
   
   # Calculate OR
-  or <- b / c
+  or <- exp_risk_unexp_ref / unexp_risk_exp_ref
   
   # Calculate 95% CI on log scale
   log_or <- log(or)
   
-  se_log_or <- sqrt(1 / b + 1 / c)
+  se_log_or <- sqrt(1 / exp_risk_unexp_ref + 1 / unexp_risk_exp_ref)
   
   lower <- exp(log_or - 1.96 * se_log_or)
   
@@ -54,12 +58,12 @@ calculate_cc_or <- function(data, antibiotic) {
   # Return results
   tibble(
     antibiotic = antibiotic,
-    b = b,
-    c = c,
+    exp_risk_unexp_ref = exp_risk_unexp_ref,
+    unexp_risk_exp_ref = unexp_risk_exp_ref,
     OR = or,
     lower_95CI = lower,
     upper_95CI = upper
-  )
+  ) 
 }
 
 
@@ -67,6 +71,19 @@ calculate_cc_or <- function(data, antibiotic) {
 cc_results <- map_dfr(
   antibiotics,
   ~ calculate_cc_or(ctc_cases_data, .x)
-)
+) %>%
+  mutate(
+    across(
+      where(is.numeric),
+        ~ round(.x, 2)
+    )
+  )  
+
+#Create location for work to go
+dir.create("output/ctc", recursive = TRUE, showWarnings = FALSE)
+
+cc_results %>%
+  knitr::kable(format = "markdown") %>%
+  writeLines("output/ctc/vanilla_case_crossover_output.md")
 
 cc_results
