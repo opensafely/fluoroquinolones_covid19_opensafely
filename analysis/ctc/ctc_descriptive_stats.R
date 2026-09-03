@@ -121,23 +121,16 @@ summary_table <- bind_rows(
   theme_minimal()
 
 
-ctc_potential_controls %>%
-summarise(count = n())
+#Check numbers by sex
 
 ctc_potential_controls %>%
 group_by(sex) %>%
-summarise(count = n())
-
-ctc_potential_controls_withindex_and_age %>%
-summarise(count = n())
-
-ctc_potential_controls_withindex_and_age %>%
+summarise(potential_control = n()) %>%
+left_join(ctc_potential_controls_withindex %>%
 group_by(sex) %>%
-summarise(count = n())
-
-ctc_potential_controls_withindex %>%
-summarise(count = n())
-
-ctc_potential_controls_withindex %>%
+summarise(with_index = n()), by = "sex") %>%
+left_join(ctc_potential_controls_withindex_and_age %>%
 group_by(sex) %>%
-summarise(count = n())
+summarise(withindex_and_age = n()), by = "sex")
+
+

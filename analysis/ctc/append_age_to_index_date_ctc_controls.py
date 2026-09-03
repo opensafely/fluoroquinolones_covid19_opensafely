@@ -38,9 +38,8 @@ dataset = create_dataset()
 dataset.define_population(indexed_controls.exists_for_patient())
 
 dataset.index_date = indexed_controls.index_date
-dataset.age = patients.age_on(indexed_controls.index_date) 
-dataset.sex = patients.sex
-
+dataset.age = patients.age_on(indexed_controls.index_date)
+dataset.sex = indexed_controls.sex
 
 #Look for exposure in risk window
 
