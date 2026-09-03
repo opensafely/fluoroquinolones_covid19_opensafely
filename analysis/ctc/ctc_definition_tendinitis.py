@@ -44,6 +44,7 @@ combo_outcome_codes = tendinitis_codes + neuropathy_newdx_codes
 tendinitis_case_date = clinical_events.where(clinical_events.snomedct_code.is_in(tendinitis_codes )
 ).where(
     clinical_events.date.is_after(start_date)
+).where(clinical_events.date.is_before(end_date)
 ).sort_by(
         clinical_events.date
 ).first_for_patient().date
