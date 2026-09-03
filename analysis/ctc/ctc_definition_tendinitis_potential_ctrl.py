@@ -65,4 +65,4 @@ dataset.define_population(
     )
 
 dataset.sex = patients.sex
-dataset.configure_dummy_data(population_size=100000)
+dataset.configure_dummy_data(population_size=1000000)

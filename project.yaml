@@ -19,12 +19,28 @@ actions:
      highly_sensitive:
        dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
 
-  matching_round_1:
-    needs: [generate_ctc_cases_tendinitis, generate_ctc_potential_control_tendinitis]
+  generate_randomindex_dates_forcontrols:
+    needs: [generate_ctc_potential_control_tendinitis]
+    run: >
+      python:v2 analysis/ctc/append_ctc_potential_controls_index_date.py --output output/ctc_data_ptnl_controls_indexappended.csv.gz
+    outputs:
+     highly_sensitive:
+       dataset: output/ctc_data_ptnl_controls_indexappended.csv.gz
+
+  generate_ages_from_randomindex_dates_forcontrols:
+    needs: [generate_randomindex_dates_forcontrols]
+    run: >
+      ehrql:v1 generate-dataset analysis/ctc/append_age_to_index_date_ctc_controls.py --output output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
+    outputs:
+      highly_sensitive:
+        dataset: output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
+
+  matching:
+    needs: [generate_ctc_cases_tendinitis,  generate_ages_from_randomindex_dates_forcontrols]
     run: >
       matching:v1.2.4
       --cases output/ctc_data_cases_tendinitis.csv.gz
-      --controls output/ctc_data_potential_controls_tendinitis.csv.gz
+      --controls output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz        
     config:
       matches_per_case: 20
       match_variables:
@@ -40,22 +56,6 @@ actions:
        moderately_sensitive:
           matching_report: output/matching_report_tendinitis.txt
      
-
-  generate_ages_from_randomindex_dates:
-    needs: [generate_ctc_potential_control_tendinitis]
-    run: >
-      python:v2 analysis/ctc/append_ctc_controls_index_date.py --output output/ctc_data_ptnl_controls_indexappended.csv.gz
-    outputs:
-     highly_sensitive:
-       dataset: output/ctc_data_ptnl_controls_indexappended.csv.gz
-
-  generate_ctc_controls_withrandom_indexdates:
-    needs: [generate_ages_from_randomindex_dates]
-    run: >
-      ehrql:v1 generate-dataset analysis/ctc/2nd_extraction_controls.py --output output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
-    outputs:
-      highly_sensitive:
-        dataset: output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
 
 # #measures - look at abx prescribing over time
 #   generate_measure:

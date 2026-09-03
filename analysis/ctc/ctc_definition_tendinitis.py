@@ -75,7 +75,7 @@ dataset.define_population(
     )
 
 
-dataset.configure_dummy_data(population_size=10000)
+dataset.configure_dummy_data(population_size=100000)
 
 #Case status
 
