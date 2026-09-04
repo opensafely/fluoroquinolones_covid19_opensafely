@@ -134,3 +134,40 @@ group_by(sex) %>%
 summarise(withindex_and_age = n()), by = "sex")
 
 
+
+ctc_potential_controls_withindex_and_age %>% 
+mutate(
+    age_group = cut(
+      age,
+      breaks = c(-Inf, 30, 40, 50, 60, 70, 80, 90, 100, Inf),
+      right = FALSE,
+      labels = c(
+        "<30",
+        "30-39",
+        "40-49",
+        "50-59",
+        "60-69",
+        "70-79",
+        "80-89",
+        "90-99",
+        "100+"
+      )
+    )
+  ) %>%
+  count(age_group, name = "count") %>%
+  mutate(
+    variable = "Age",
+    category = as.character(age_group)
+  ) %>%
+  select(variable, category, count)
+
+  ctc_potential_controls_withindex_and_age %>%
+  group_by(age) %>%
+  summarise(count = n())
+
+ctc_potential_controls %>%
+  summarise(
+    present = sum(patient_id %in% ctc_potential_controls$patient_id),
+    absent = sum(!(patient_id %in% ctc_potential_controls$patient_id)),
+    percent_present = mean(patient_id %in% ctc_potential_controls$patient_id) * 100
+  )

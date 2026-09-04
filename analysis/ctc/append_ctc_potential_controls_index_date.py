@@ -3,6 +3,9 @@ import gzip
 import random
 from datetime import date, timedelta
 
+# Set seed for reproducibility
+random.seed(12345)
+
 # Define start and end
 start_date = date(2010, 12, 1)
 end_date = date(2024, 8, 1)

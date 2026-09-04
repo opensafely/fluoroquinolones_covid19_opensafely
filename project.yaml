@@ -36,15 +36,16 @@ actions:
         dataset: output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
 
   matching:
-    needs: [generate_ctc_cases_tendinitis,  generate_ctc_potential_control_tendinitis]
+    needs: [generate_ctc_cases_tendinitis,  generate_ages_from_randomindex_dates_forcontrols]
     run: >
       matching:v1.2.4
       --cases output/ctc_data_cases_tendinitis.csv.gz
-      --controls output/ctc_data_potential_controls_tendinitis.csv.gz        
+      --controls output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz       
     config:
       matches_per_case: 3
       match_variables:
         sex: category
+        index_date: month_only
       index_date_variable: index_date
       generate_match_index_date: no_offset
       output_suffix: _tendinitis
@@ -56,12 +57,13 @@ actions:
        moderately_sensitive:
           matching_report: output/matching_report_tendinitis.txt
 
-  generate_vanilla_ctc:
+  generate_vanilla_cc:
     needs: [generate_ctc_cases_tendinitis]
     run: r:v2 analysis/ctc/ctc_case_crossover_analysis.R
     outputs:
       moderately_sensitive:
-        table 1: output/ctc/vanilla_case_crossover_output.md       
+        table 1: output/ctc/vanilla_case_crossover_output.md
+        chart 1: output/ctc/basic_cc_plot.png       
 
 # #measures - look at abx prescribing over time
 #   generate_measure:
