@@ -24,7 +24,7 @@ combo_outcome_codes = tendinitis_codes + neuropathy_newdx_codes
 #Here we take the potential controls, to which we have appended a random index date and we calculate their age
 #on the index date to allow us to use age and index date for matching
 
-CONTROLS = "output/ctc_data_ptnl_controls_indexappended.csv.gz"
+CONTROLS = "output/ctc_data_potential_controls_indexappended.csv.gz"
 
 indexed_controls = table_from_file(
     CONTROLS,
