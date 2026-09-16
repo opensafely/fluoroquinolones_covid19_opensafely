@@ -55,8 +55,7 @@ df_long <- df %>%
   ) %>%
   select(patient_id, Group, Time, Exposed)
 
-  head(df_long)
-  head(df_long_sixabx)
+#MAke it split out for the six antibiotics, so we can run the model for each antibiotic separately
 
   exposure_cols <- c(risk_vars, reference_vars)
 
