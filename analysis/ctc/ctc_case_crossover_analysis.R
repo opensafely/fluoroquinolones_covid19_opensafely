@@ -5,6 +5,7 @@ library(readr)
 library(tidyverse)
 library(tidyr)
 library(stringr)
+library(arrow)
 
 ctc_cases_data <- readr::read_csv("output/ctc_data_cases_tendinitis.csv.gz")
 
@@ -187,3 +188,31 @@ ggsave(plot = basic_cc_plot,
 filename = "basic_cc_plot.png",
 path = here::here("output/ctc")
 )
+
+#Repeat this analysis for the controls - I think the arrow converts TRUE to T
+
+ctc_plus_controls <- read_feather("output/matched_combined_tendinitis.arrow") %>% 
+mutate(tendinitis_case = if_else(tendinitis_case == "T", "case", "control", missing = "control")) %>%
+mutate(
+  across(all_of(c(risk_vars, reference_vars)), ~ case_when(
+    .x == "T" ~ TRUE,
+    .x == "F" ~ FALSE,
+    TRUE ~ NA
+  ))
+)
+
+ctc_results_timetrend <- map_dfr(
+  antibiotics,
+  ~ calculate_cc_or((ctc_plus_controls %>% filter(tendinitis_case == "control")), .x)
+) %>%
+  mutate(
+    across(
+      where(is.numeric),
+        ~ round(.x, 2)
+    )
+  ) %>%
+  mutate(analysis = "control_timetrend")
+
+ctc_results_timetrend %>%
+  knitr::kable(format = "markdown") %>%
+  writeLines("output/ctc/timetrend_case_crossover_output.md")
