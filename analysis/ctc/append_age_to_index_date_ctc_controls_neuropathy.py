@@ -1,5 +1,5 @@
 from ehrql import codelist_from_csv, create_dataset, table_from_file, years, months, weeks, days, show
-from ehrql.tables.tpp import patients, clinical_events, medications
+from ehrql.tables.tpp import patients, clinical_events, medications, practice_registrations
 import datetime
 
 #Exposure codes
@@ -16,15 +16,12 @@ all_abx_codes = amoxicillin_codes + amox_clavulanicacid_codes + cefalexin_codes 
 
 #Outcome codes
 
-tendinitis_codes = codelist_from_csv("codelists/user-jacklsbrist-tendinitis.csv", column = "code")
 neuropathy_newdx_codes = codelist_from_csv("codelists/user-jacklsbrist-peripheral-neuropathy.csv", column = "code")
-
-combo_outcome_codes = tendinitis_codes + neuropathy_newdx_codes
 
 #Here we take the potential controls, to which we have appended a random index date and we calculate their age
 #on the index date to allow us to use age and index date for matching
 
-CONTROLS = "output/ctc_data_potential_controls_indexappended.csv.gz"
+CONTROLS = "output/ctc_data_potential_controls_neuropathy_indexappended.csv.gz"
 
 indexed_controls = table_from_file(
     CONTROLS,
@@ -35,11 +32,22 @@ indexed_controls = table_from_file(
 )
 
 dataset = create_dataset()
-dataset.define_population(indexed_controls.exists_for_patient())
+
+
+#Need to define registration 1y before index date - as was done for cases
+
+has_registration_1y_before_index =  (
+    practice_registrations.where(practice_registrations.start_date <= (indexed_controls.index_date - years(1)))
+    .exists_for_patient()
+)
+
+dataset.define_population(indexed_controls.exists_for_patient() &
+                          has_registration_1y_before_index)
 
 dataset.configure_dummy_data(population_size=100000)
 
 dataset.index_date = indexed_controls.index_date
+
 
 dataset.age = patients.age_on(indexed_controls.index_date)
 dataset.sex = indexed_controls.sex
@@ -64,7 +72,7 @@ antibiotic_codelists_dmd = {
 }
 
 # Define time windows for each period label
-tendinitis_periods = {
+neuropathy_periods = {
     "risk": (days(30), days(1)),
     "reference": (days(180), days(151))
 }
@@ -72,10 +80,10 @@ tendinitis_periods = {
 
 # Loop over antibiotics and periods
 for antibiotic, codelist in antibiotic_codelists_dmd.items():
-    for period_label, (start_offset, end_offset) in tendinitis_periods.items():
+    for period_label, (start_offset, end_offset) in neuropathy_periods.items():
                 setattr(
                         dataset,
-                        f"{antibiotic}_{period_label}_tendinitis",
+                        f"{antibiotic}_{period_label}_neuropathy",
                          medications.where(medications.dmd_code.is_in(codelist))
                          .where(
                           medications.date.is_on_or_between(
@@ -85,5 +93,3 @@ for antibiotic, codelist in antibiotic_codelists_dmd.items():
             )
             .exists_for_patient()
         )
-
-

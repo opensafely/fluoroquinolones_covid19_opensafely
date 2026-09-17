@@ -26,10 +26,41 @@ for row in data:
 
 # Save the updated data
 with gzip.open(
-    "output/ctc_data_potential_controls_indexappended.csv.gz",
+    "output/ctc_data_potential_controls_tendinitis_indexappended.csv.gz",
     "wt",
     newline=""
 ) as f:
     writer = csv.DictWriter(f, fieldnames=data[0].keys())
+    writer.writeheader()
+    writer.writerows(data)
+
+#Do the same for neuropathy
+# Read in potential neuropathy controls
+with gzip.open(
+    "output/ctc_data_potential_controls_neuropathy.csv.gz",
+    "rt"
+) as f:
+    reader = csv.DictReader(f)
+    data = list(reader)
+
+print(data[0].keys())
+
+# Generate a random index date
+days = (end_date - start_date).days
+
+for row in data:
+    random_days = random.randint(0, days)
+    row["index_date"] = start_date + timedelta(days=random_days)
+
+# Save the updated data
+with gzip.open(
+    "output/ctc_data_potential_controls_neuropathy_indexappended.csv.gz",
+    "wt",
+    newline=""
+) as f:
+    writer = csv.DictWriter(
+        f,
+        fieldnames=data[0].keys()
+    )
     writer.writeheader()
     writer.writerows(data)

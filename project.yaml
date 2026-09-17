@@ -13,30 +13,53 @@ actions:
      highly_sensitive:
        dataset: output/ctc_data_cases_tendinitis.csv.gz
 
+  generate_ctc_cases_neuropathy:
+    run: ehrql:v1 generate-dataset analysis/ctc/ctc_definition_neuropathy.py --output output/ctc_data_cases_neuropathy.csv.gz
+    outputs:
+     highly_sensitive:
+       dataset: output/ctc_data_cases_neuropathy.csv.gz
+
   generate_ctc_potential_control_tendinitis:
     run: ehrql:v1 generate-dataset analysis/ctc/ctc_definition_tendinitis_potential_ctrl.py --output output/ctc_data_potential_controls_tendinitis.csv.gz
     outputs:
      highly_sensitive:
        dataset: output/ctc_data_potential_controls_tendinitis.csv.gz
 
+  generate_ctc_potential_control_neuropathy:
+    run: ehrql:v1 generate-dataset analysis/ctc/ctc_definition_neuropathy_potential_ctrl.py --output output/ctc_data_potential_controls_neuropathy.csv.gz
+    outputs:
+     highly_sensitive:
+       dataset: output/ctc_data_potential_controls_neuropathy.csv.gz
+
   generate_randomindex_dates_forcontrols:
-    needs: [generate_ctc_potential_control_tendinitis]
+    needs: [generate_ctc_potential_control_tendinitis, generate_ctc_potential_control_neuropathy]
     run: >
       python:v2 analysis/ctc/append_ctc_potential_controls_index_date.py --output output/ctc_data_potential_controls_indexappended.csv.gz
     outputs:
      highly_sensitive:
-       dataset: output/ctc_data_potential_controls_indexappended.csv.gz
+       dataset_1: output/ctc_data_potential_controls_tendinitis_indexappended.csv.gz
+       dataset_2: output/ctc_data_potential_controls_neuropathy_indexappended.csv.gz
 
-  generate_ages_from_randomindex_dates_forcontrols:
+  generate_ages_from_randomindex_dates_for_tendinitis_controls:
     needs: [generate_randomindex_dates_forcontrols]
     run: >
-      ehrql:v1 generate-dataset analysis/ctc/append_age_to_index_date_ctc_controls.py --output output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
+      ehrql:v1 generate-dataset analysis/ctc/append_age_to_index_date_ctc_controls_tendinitis.py --output output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
     outputs:
       highly_sensitive:
         dataset: output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz
 
+  generate_ages_from_randomindex_dates_for_neuropathy_controls:
+    needs: [generate_randomindex_dates_forcontrols]
+    run: >
+      ehrql:v1 generate-dataset analysis/ctc/append_age_to_index_date_ctc_controls_neuropathy.py --output output/ctc_data_potentialcontrols_withindexdates_andages_neuropathy.csv.gz
+    outputs:
+      highly_sensitive:
+        dataset: output/ctc_data_potentialcontrols_withindexdates_andages_neuropathy.csv.gz
+
+## Got to here - need to do the neuropathy matching and then the ctc analysis for that as well.
+
   matching:
-    needs: [generate_ctc_cases_tendinitis,  generate_ages_from_randomindex_dates_forcontrols]
+    needs: [generate_ctc_cases_tendinitis,  generate_ages_from_randomindex_dates_for_tendinitis_controls]
     run: >
       matching:v1.2.4
       --cases output/ctc_data_cases_tendinitis.csv.gz
@@ -59,12 +82,21 @@ actions:
           matching_report: output/matching_report_tendinitis.txt
 
   generate_vanilla_cc:
-    needs: [generate_ctc_cases_tendinitis]
-    run: r:v2 analysis/ctc/ctc_case_crossover_analysis.R
+    needs: [generate_ctc_cases_tendinitis, matching]
+    run: r:v2 analysis/ctc/analysis_ctc_case_crossover.R
     outputs:
       moderately_sensitive:
         table 1: output/ctc/vanilla_case_crossover_output.md
         chart 1: output/ctc/basic_cc_plot.png       
+
+  generate_ctc_inc_time:
+    needs: [matching]
+    run: r:v2 analysis/ctc/analysis_ctc_time_elementadded.R
+    outputs:
+      moderately_sensitive:
+        table 1: output/ctc_fq_only_ctccomplete.txt
+        table 2: output/ctc_six_models_summaries.txt
+
 
 # #measures - look at abx prescribing over time
 #   generate_measure:

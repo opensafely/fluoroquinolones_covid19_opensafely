@@ -22,14 +22,15 @@ end_date = "2024-08-01"  ##TBC
 
 # #Outcome codes
 
-tendinitis_codes = codelist_from_csv("codelists/user-jacklsbrist-tendinitis.csv", column = "code")
+neuropathy_newdx_codes = codelist_from_csv("codelists/user-jacklsbrist-peripheral-neuropathy.csv", column = "code")
 
-    #Registration 1y before case status - to be defined at the next stage
 
-#Exclusion criteria - those with prior tendinitis
+    #Registration 1y before start date - to be defined after index date generated
 
-prior_tendinitis = clinical_events.where(
-        clinical_events.snomedct_code.is_in(tendinitis_codes) #Exclude those with pre-existing diagnoses
+#Exclusion criteria - those with prior neuropathy
+
+prior_neuropathy = clinical_events.where(
+        clinical_events.snomedct_code.is_in(neuropathy_newdx_codes) #Exclude those with pre-existing diagnoses
 ).where(
         clinical_events.date.is_on_or_before(start_date)
 ).exists_for_patient()
@@ -40,7 +41,7 @@ prior_tendinitis = clinical_events.where(
 
 dataset.define_population(
      (patients.exists_for_patient()) &
-    ~(prior_tendinitis) 
+    ~(prior_neuropathy) 
     )
 
 dataset.sex = patients.sex

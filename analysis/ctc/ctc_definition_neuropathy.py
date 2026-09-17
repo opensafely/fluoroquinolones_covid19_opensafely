@@ -1,7 +1,7 @@
 ######################################
 
 # This script provides the formal specification of the data that will be extracted from
-# the OpenSAFELY database for the case-time-control analysis.
+# the OpenSAFELY database for the case-time-control analysis - neuropathy section.
 
 #Jack Stanley
 
@@ -34,11 +34,11 @@ all_abx_codes = amoxicillin_codes + amox_clavulanicacid_codes + cefalexin_codes 
 
 #Outcome codes
 
-tendinitis_codes = codelist_from_csv("codelists/user-jacklsbrist-tendinitis.csv", column = "code")
+neuropathy_newdx_codes = codelist_from_csv("codelists/user-jacklsbrist-peripheral-neuropathy.csv", column = "code")
 
         #Include just cases after the start date
 
-tendinitis_case_date = clinical_events.where(clinical_events.snomedct_code.is_in(tendinitis_codes )
+neuropathy_case_date = clinical_events.where(clinical_events.snomedct_code.is_in(neuropathy_newdx_codes )
 ).where(
     clinical_events.date.is_after(start_date)
 ).where(clinical_events.date.is_before(end_date)
@@ -48,15 +48,15 @@ tendinitis_case_date = clinical_events.where(clinical_events.snomedct_code.is_in
 
     #Registration 1y before case status
 
-has_registration_1y_before_tendinitis =  (
-    practice_registrations.where(practice_registrations.start_date <= (tendinitis_case_date - years(1)))
+has_registration_1y_before_neuropathy =  (
+    practice_registrations.where(practice_registrations.start_date <= (neuropathy_case_date - years(1)))
     .exists_for_patient()
 )
 
-#Exclusion criteria - those with prior tendinitis/neuropathy
+#Exclusion criteria - those with prior neuropathy
 
-prior_tendinitis = clinical_events.where(
-        clinical_events.snomedct_code.is_in(tendinitis_codes) #Exclude those with pre-existing diagnoses
+prior_neuropathy = clinical_events.where(
+        clinical_events.snomedct_code.is_in(neuropathy_newdx_codes) #Exclude those with pre-existing diagnoses
 ).where(
         clinical_events.date.is_on_or_before(start_date)
 ).exists_for_patient()
@@ -67,22 +67,21 @@ prior_tendinitis = clinical_events.where(
 
 dataset.define_population(
      (patients.exists_for_patient()) &
-     tendinitis_case_date.is_not_null() &
-     has_registration_1y_before_tendinitis &
-    ~(prior_tendinitis) 
+     neuropathy_case_date.is_not_null() &
+     has_registration_1y_before_neuropathy &
+    ~(prior_neuropathy) 
     )
-
 
 dataset.configure_dummy_data(population_size=100000)
 
 #Case status
 
 
-dataset.tendinitis_case = tendinitis_case_date.is_not_null()
+dataset.neuropathy_case = neuropathy_case_date.is_not_null()
 
 dataset.sex = patients.sex
-dataset.age = patients.age_on(tendinitis_case_date) 
-dataset.index_date = tendinitis_case_date
+dataset.age = patients.age_on(neuropathy_case_date) 
+dataset.index_date = neuropathy_case_date
 
 #Look for exposure in risk window
 
@@ -99,7 +98,7 @@ antibiotic_codelists_dmd = {
 }
 
 # Define time windows for each period label
-tendinitis_periods = {
+neuropathy_periods = {
     "risk": (days(30), days(1)),
     "reference": (days(180), days(151))
 }
@@ -107,15 +106,15 @@ tendinitis_periods = {
 
 # Loop over antibiotics and periods
 for antibiotic, codelist in antibiotic_codelists_dmd.items():
-    for period_label, (start_offset, end_offset) in tendinitis_periods.items():
+    for period_label, (start_offset, end_offset) in neuropathy_periods.items():
                 setattr(
                         dataset,
-                        f"{antibiotic}_{period_label}_tendinitis",
+                        f"{antibiotic}_{period_label}_neuropathy",
                          medications.where(medications.dmd_code.is_in(codelist))
                          .where(
                           medications.date.is_on_or_between(
-                                        tendinitis_case_date - start_offset,
-                                        tendinitis_case_date - end_offset
+                                        neuropathy_case_date - start_offset,
+                                        neuropathy_case_date - end_offset
                 )
             )
             .exists_for_patient()

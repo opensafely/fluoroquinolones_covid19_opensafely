@@ -10,22 +10,9 @@ ctc_potential_controls <- readr::read_csv("output/ctc_data_potential_controls_te
 ctc_potential_controls_withindex <- readr::read_csv("output/ctc_data_potential_controls_indexappended.csv.gz")
 ctc_potential_controls_withindex_and_age <- readr::read_csv("output/ctc_data_potentialcontrols_withindexdates_andages_tendinitis.csv.gz")
 
-## Make a recreatable list of abx risk/ref
+#Draw in defined variables/vectors from variables.R
 
-abx_risk_ref_periods <- c(
-  "amoxicillin_risk_tendinitis",
-  "amoxicillin_reference_tendinitis",
-  "amox_clavulanic_acid_risk_tendinitis",
-  "amox_clavulanic_acid_reference_tendinitis",
-  "cefalexin_risk_tendinitis",
-  "cefalexin_reference_tendinitis",
-  "trimethoprim_risk_tendinitis",
-  "trimethoprim_reference_tendinitis",
-  "trim_sulfamethoxazole_risk_tendinitis",
-  "trim_sulfamethoxazole_reference_tendinitis",
-  "fluoroquinolones_risk_tendinitis",
-  "fluoroquinolones_reference_tendinitis"
-)
+source("analysis/R/variables.R")
 
 # Age groups
 age_summary <- ctc_cases_data %>%
