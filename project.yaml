@@ -58,7 +58,7 @@ actions:
 
 ## Got to here - need to do the neuropathy matching and then the ctc analysis for that as well.
 
-  matching:
+  matching_tendinitis:
     needs: [generate_ctc_cases_tendinitis,  generate_ages_from_randomindex_dates_for_tendinitis_controls]
     run: >
       matching:v1.2.4
@@ -81,8 +81,31 @@ actions:
        moderately_sensitive:
           matching_report: output/matching_report_tendinitis.txt
 
+  matching_neuropathy:
+    needs: [generate_ctc_cases_neuropathy,  generate_ages_from_randomindex_dates_for_neuropathy_controls]
+    run: >
+      matching:v1.2.4
+      --cases output/ctc_data_cases_neuropathy.csv.gz
+      --controls output/ctc_data_potentialcontrols_withindexdates_andages_neuropathy.csv.gz       
+    config:
+      matches_per_case: 3
+      match_variables:
+        sex: category
+        index_date: month_only
+        age: 5
+      index_date_variable: index_date
+      generate_match_index_date: no_offset
+      output_suffix: _neuropathy
+    outputs:
+       highly_sensitive:
+          matched_cases: output/matched_cases_neuropathy.arrow
+          matched_controls: output/matched_matches_neuropathy.arrow
+          matched_combined: output/matched_combined_neuropathy.arrow
+       moderately_sensitive:
+          matching_report: output/matching_report_neuropathy.txt
+
   generate_vanilla_cc:
-    needs: [generate_ctc_cases_tendinitis, matching]
+    needs: [generate_ctc_cases_tendinitis, matching_tendinitis]
     run: r:v2 analysis/ctc/analysis_ctc_case_crossover.R
     outputs:
       moderately_sensitive:
@@ -90,7 +113,7 @@ actions:
         chart 1: output/ctc/basic_cc_plot.png       
 
   generate_ctc_inc_time:
-    needs: [matching]
+    needs: [matching_tendinitis]
     run: r:v2 analysis/ctc/analysis_ctc_time_elementadded.R
     outputs:
       moderately_sensitive:
