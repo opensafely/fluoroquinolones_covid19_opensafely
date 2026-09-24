@@ -28,21 +28,21 @@ antibiotics <- c(
 )
 
 risk_vars <- c(
-  "amoxicillin_risk_tendinitis",
-  "amox_clavulanic_acid_risk_tendinitis",
-  "cefalexin_risk_tendinitis",
-  "trimethoprim_risk_tendinitis",
-  "trim_sulfamethoxazole_risk_tendinitis",
-  "fluoroquinolones_risk_tendinitis"
+  "amoxicillin_risk",
+  "amox_clavulanic_acid_risk",
+  "cefalexin_risk",
+  "trimethoprim_risk",
+  "trim_sulfamethoxazole_risk",
+  "fluoroquinolones_risk"
 )
 
 reference_vars <- c(
-  "amoxicillin_reference_tendinitis",
-  "amox_clavulanic_acid_reference_tendinitis",
-  "cefalexin_reference_tendinitis",
-  "trimethoprim_reference_tendinitis",
-  "trim_sulfamethoxazole_reference_tendinitis",
-  "fluoroquinolones_reference_tendinitis"
+  "amoxicillin_reference",
+  "amox_clavulanic_acid_reference",
+  "cefalexin_reference",
+  "trimethoprim_reference",
+  "trim_sulfamethoxazole_reference",
+  "fluoroquinolones_reference"
 )
 
 exposure_cols <- (c(risk_vars, reference_vars))

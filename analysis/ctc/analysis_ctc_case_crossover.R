@@ -7,35 +7,81 @@ library(tidyr)
 library(stringr)
 library(arrow)
 
-ctc_cases_data <- readr::read_csv("output/ctc_data_cases_tendinitis.csv.gz")
+ctc_cases_data_tendinitis <- readr::read_csv("output/ctc_data_cases_tendinitis.csv.gz") %>%
+mutate(event = "tendinitis")
+ctc_cases_data_neuropathy <- readr::read_csv("output/ctc_data_cases_neuropathy.csv.gz") %>%
+mutate(event = "neuropathy")
+
+outcomes <- c(
+  "tendinitis",
+  "neuropathy"
+)
+
+ctc_cases_data <- bind_rows(ctc_cases_data_tendinitis, ctc_cases_data_neuropathy)
 
 #Draw in defined variables/vectors from variables.R
 source("analysis/R/variables.R")
 
-# Function to calculate case-crossover OR and 95% CI
-calculate_cc_or <- function(data, antibiotic) {
+#Collapse down the risk/reference to one shared column
+
+for (ab in antibiotics) {
   
-  risk_var <- paste0(antibiotic, "_risk_tendinitis")
-  reference_var <- paste0(antibiotic, "_reference_tendinitis")
+  risk_tendinitis <- paste0(ab, "_risk_tendinitis")
+  risk_neuropathy <- paste0(ab, "_risk_neuropathy")
   
-  cc <- data %>%
-    count(
-      .data[[risk_var]],
-      .data[[reference_var]]
+  ref_tendinitis <- paste0(ab, "_reference_tendinitis")
+  ref_neuropathy <- paste0(ab, "_reference_neuropathy")
+  
+  risk_new <- paste0(ab, "_risk")
+  ref_new <- paste0(ab, "_reference")
+  
+  ctc_cases_data[[risk_new]] <- ifelse(
+    ctc_cases_data$event == "tendinitis",
+    ctc_cases_data[[risk_tendinitis]],
+    ifelse(
+      ctc_cases_data$event == "neuropathy",
+      ctc_cases_data[[risk_neuropathy]],
+      NA
     )
+  )
+  
+  ctc_cases_data[[ref_new]] <- ifelse(
+    ctc_cases_data$event == "tendinitis",
+    ctc_cases_data[[ref_tendinitis]],
+    ifelse(
+      ctc_cases_data$event == "neuropathy",
+      ctc_cases_data[[ref_neuropathy]],
+      NA
+    )
+  )
+}
+
+#Sanity check before calculating - just use amoxicillin to check
+
+ctc_cases_data %>% 
+group_by(event, tendinitis_case, neuropathy_case, amoxicillin_risk_tendinitis, amoxicillin_risk_neuropathy) %>%
+summarise(count = n())
+
+# Function to calculate case-crossover OR and 95% CI
+calculate_cc_or <- function(data, antibiotic, outcome) {
+  
+  risk_var <- paste0(antibiotic, "_risk")
+  reference_var <- paste0(antibiotic, "_reference")
+
+  analysis_data <- data %>%
+    filter(event == outcome)
   
   exp_risk_unexp_ref <- sum(
-    data[[risk_var]] == TRUE &
-    data[[reference_var]] == FALSE,
+    analysis_data[[risk_var]] == TRUE &
+    analysis_data[[reference_var]] == FALSE,
     na.rm = TRUE
   )
   
   unexp_risk_exp_ref <- sum(
-    data[[risk_var]] == FALSE &
-    data[[reference_var]] == TRUE,
+    analysis_data[[risk_var]] == FALSE &
+    analysis_data[[reference_var]] == TRUE,
     na.rm = TRUE
   )
-  
   
   # Calculate OR
   or <- exp_risk_unexp_ref / unexp_risk_exp_ref
@@ -51,6 +97,7 @@ calculate_cc_or <- function(data, antibiotic) {
   
   # Return results
   tibble(
+    outcome = outcome,
     antibiotic = antibiotic,
     exp_risk_unexp_ref = exp_risk_unexp_ref,
     unexp_risk_exp_ref = unexp_risk_exp_ref,
@@ -60,11 +107,20 @@ calculate_cc_or <- function(data, antibiotic) {
   ) 
 }
 
-# Run for all six antibiotics
-cc_results <- map_dfr(
-  antibiotics,
-  ~ calculate_cc_or(ctc_cases_data, .x)
+# Run for all six antibiotics and two outcome combos
+
+cc_results <- expand.grid(
+  antibiotic = antibiotics,
+  outcome = outcomes,
+  stringsAsFactors = FALSE
 ) %>%
+  purrr::pmap_dfr(function(antibiotic, outcome) {
+    calculate_cc_or(
+      data = ctc_cases_data,
+      antibiotic = antibiotic,
+      outcome = outcome
+    )
+  }) %>%
   mutate(
     across(
       where(is.numeric),
@@ -73,11 +129,17 @@ cc_results <- map_dfr(
   ) %>%
   mutate(analysis = "raw")
 
-# Now look at excluding anyone who received the other antibiotic in either the risk or reference period
+  cc_results
+
+
+# Now look at excluding anyone who received the other antibiotic in either the risk or reference period. Riskvars defined in variables.R
 
 risk_gt1 <- sum(rowSums(ctc_cases_data[risk_vars]) > 1)
 
 reference_gt1 <- sum(rowSums(ctc_cases_data[reference_vars]) > 1)
+
+risk_gt1_tendinitis <- sum(rowSums((ctc_cases_data %>% 
+dplyr::filter(event == "tendinitis"))[risk_vars]) > 1)
 
 cat(
   "There were", risk_gt1, "people with >1 antibiotic in the risk period and",
@@ -90,17 +152,27 @@ ctc_cases_data_single_abx <- ctc_cases_data %>%
     rowSums(across(all_of(reference_vars))) <= 1
   )
 
-cc_results_singleabx <- map_dfr(
-  antibiotics,
-  ~ calculate_cc_or(ctc_cases_data_single_abx, .x)
+cc_results_singleabx <- expand.grid(
+  antibiotic = antibiotics,
+  outcome = outcomes,
+  stringsAsFactors = FALSE
 ) %>%
+purrr::pmap_dfr(function(antibiotic, outcome){
+  calculate_cc_or(
+    data = ctc_cases_data_single_abx,
+    antibiotic = antibiotic,
+    outcome = outcome
+  )
+}) %>%
   mutate(
     across(
       where(is.numeric),
         ~ round(.x, 2)
     )
   ) %>%
-  mutate(analysis = "single_abx_risk_ref")
+mutate(analysis = "single_abx_risk_ref")
+
+cc_results_singleabx
 
 # Join df together and tidy for plotting
 
@@ -146,6 +218,7 @@ basic_cc_plot <- ggplot((joined_analyses %>%
     orientation = "y",
     width = 0.5
   ) +
+  facet_wrap(~outcome) +
   geom_point(size = 5) +
   geom_vline(xintercept = 1, linetype = "dashed") +
   scale_x_log10() +
@@ -153,7 +226,7 @@ basic_cc_plot <- ggplot((joined_analyses %>%
     x = "Odds ratio (95% CI)",
     y = "Antibiotic"
   ) +
-  ggtitle("Basic Case Crossover Analysis - Tendinitis - only single abx in risk/ref")
+  ggtitle("Basic Case Crossover Analysis - Tendinitis - only single abx in risk/ref") +
   theme_classic()
 
 basic_cc_plot
@@ -163,7 +236,7 @@ filename = "basic_cc_plot.png",
 path = here::here("output/ctc")
 )
 
-#Repeat this analysis for the controls - I think the arrow converts TRUE to T
+#Repeat this analysis for the controls - I think the arrow converts TRUE to T - got up to this point so to resume here
 
 ctc_plus_controls <- read_feather("output/matched_combined_tendinitis.arrow") %>% 
 mutate(tendinitis_case = if_else(tendinitis_case == "T", "case", "control", missing = "control")) %>%
