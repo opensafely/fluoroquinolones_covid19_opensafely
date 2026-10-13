@@ -62,6 +62,7 @@ colnames(combined_data)
     all_of(antibiotics)
   )
 
+colnames(df_long_sixabx_twooutcomes)
 
 # Want to estimate the OR for antibiotic exposure in risk vs reference period for those with tendinitis/neuropathy, 
 # with a control of exposure in risk vs reference period in those without tendinitis to account for temporal changes in prescribing
