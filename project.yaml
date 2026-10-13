@@ -116,7 +116,7 @@ actions:
         chart 2: output/ctc/timetrend_cc_plot.png
 
   generate_ctc_inc_time:
-    needs: [matching_tendinitis, matching_neuropathy]
+    needs: [generate_vanilla_cc]
     run: r:v2 analysis/ctc/analysis_ctc_bothabx_timeadded.R
     outputs:
       moderately_sensitive:
