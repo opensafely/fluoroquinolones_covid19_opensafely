@@ -104,19 +104,28 @@ models <- setNames(
 
 #Generate summary
 
-six_models <- lapply(models, summary)
+six_by_two_models <- lapply(models, summary)
+
 
 #Save output
 
-sink("output/ctc_six_models_summaries.txt")
+sink("output/ctc_six_by_two_models_summaries.txt")
 
-for (abx in names(six_models)) {
+for (outcome in names(six_by_two_models)) {
+  
+  cat("\n\n########################################\n")
+  cat("Outcome:", outcome, "\n")
+  cat("########################################\n")
+  
+  for (abx in names(six_by_two_models)) {
 
   cat("\n\n========================================\n")
   cat("Antibiotic:", abx, "\n")
   cat("========================================\n\n")
 
   print(six_models[[abx]])
+  }
 }
 
 sink()
+
