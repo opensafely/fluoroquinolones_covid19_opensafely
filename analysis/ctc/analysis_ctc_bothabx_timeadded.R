@@ -53,7 +53,19 @@ colnames(combined_data)
     Group_case_controlegtimetrend = if_else(case == "Case", 1, 0)
   ) %>%
 
-# Keep only the data needed
+ # Convert antibiotic status to numeric
+  mutate(
+    across(
+      all_of(antibiotics),
+      ~ case_when(
+        .x == TRUE  ~ 1,
+        .x == FALSE ~ 0,
+        TRUE        ~ NA_real_
+      )
+    )
+  ) %>%
+
+    # Keep only the data needed
   select(
     patient_id,
     event,
@@ -62,7 +74,6 @@ colnames(combined_data)
     all_of(antibiotics)
   )
 
-colnames(df_long_sixabx_twooutcomes)
 
 # Want to estimate the OR for antibiotic exposure in risk vs reference period for those with tendinitis/neuropathy, 
 # with a control of exposure in risk vs reference period in those without tendinitis to account for temporal changes in prescribing
@@ -70,7 +81,10 @@ colnames(df_long_sixabx_twooutcomes)
 # Exposed - 1 = exposed, 0 = not exposed
 # Group - cases = 1, controls (for time trend) = 0
 
-#First time just to prove it works run the model with fq/tendinitis
+#First time just to prove it works run the model with fq/tendinitis - this is the structure as per the Suisa paper 1995 - with risk/ref allocation
+# antibiotic coef is for group 0. And we then get a separate output for group = 1 (ie cases) which is the interaction term of interest
+
+head(df_long_sixabx_twooutcomes)
 
 model_fq <- clogit(Time_risk_ref ~ fluoroquinolones + fluoroquinolones:Group_case_controlegtimetrend + strata(patient_id), 
 data = (df_long_sixabx_twooutcomes %>% filter(event == "tendinitis")))

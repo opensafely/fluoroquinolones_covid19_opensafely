@@ -306,4 +306,3 @@ timetrend_cc_plot <- ggplot((joined_analyses %>%
   filename = "timetrend_cc_plot.png",
   path = here::here("output/ctc")
   )
-

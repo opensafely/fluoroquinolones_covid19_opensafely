@@ -114,12 +114,12 @@ actions:
         chart 2: output/ctc/timetrend_cc_plot.png
 
   generate_ctc_inc_time:
-    needs: [matching_tendinitis]
-    run: r:v2 analysis/ctc/analysis_ctc_time_elementadded.R
+    needs: [matching_tendinitis, matching_neuropathy, generate_vanilla_cc]
+    run: r:v2 analysis/ctc/analysis_ctc_bothabx_timeadded.R
     outputs:
       moderately_sensitive:
         table 1: output/ctc_fq_only_ctccomplete.txt
-        table 2: output/ctc_six_models_summaries.txt
+        table 2: output/ctc_six_by_two_models_summaries.txt
 
 
 # #measures - look at abx prescribing over time
