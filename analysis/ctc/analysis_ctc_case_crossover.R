@@ -95,7 +95,7 @@ mutate(
 
 colnames(ctc_cases_controls_combo)
 
-readr::write_csv(ctc_cases_controls_combo, here::here("output", "dataset_ctc_cases_controls_neuroptendinitis.csv.gz"))
+readr::write_csv(ctc_cases_controls_combo, here::here("output", "dataset_ctc_cases_controls_neuroptendinitis.csv"))
 
 # Function to calculate case-crossover OR and 95% CI - separately by antibiotic, outcome and case/timetrend(control) status.
 

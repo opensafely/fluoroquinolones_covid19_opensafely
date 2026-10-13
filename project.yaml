@@ -108,13 +108,15 @@ actions:
     needs: [generate_ctc_cases_tendinitis, matching_tendinitis, generate_ctc_cases_neuropathy, matching_neuropathy]
     run: r:v2 analysis/ctc/analysis_ctc_case_crossover.R
     outputs:
+      highly_sensitive:
+        table 1: output/dataset_ctc_cases_controls_neuroptendinitis.csv
       moderately_sensitive:
         table 1: output/ctc/vanilla_case_crossover_output.md
         chart 1: output/ctc/basic_cc_plot.png 
         chart 2: output/ctc/timetrend_cc_plot.png
 
   generate_ctc_inc_time:
-    needs: [matching_tendinitis, matching_neuropathy, generate_vanilla_cc]
+    needs: [matching_tendinitis, matching_neuropathy]
     run: r:v2 analysis/ctc/analysis_ctc_bothabx_timeadded.R
     outputs:
       moderately_sensitive:

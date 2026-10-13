@@ -14,7 +14,7 @@ source("analysis/R/variables.R")
 
 #Read in combined dataset (from earlier ctc_case_crossover file)
 
-combined_data <- readr::read_csv("output/dataset_ctc_cases_controls_neuroptendinitis.csv.gz",
+combined_data <- readr::read_csv("output/dataset_ctc_cases_controls_neuroptendinitis.csv",
 col_types = cols(
     date_of_birth = col_date(),
     patient_table_sex = col_character()
