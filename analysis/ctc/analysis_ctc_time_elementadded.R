@@ -22,6 +22,7 @@ mutate(across(all_of(exposure_cols),~case_when(
   TRUE ~ NA_real_)
   ))
 
+
 #Long format pairwise for risk and reference periods - Split out for the six antibiotics, so we can run the model for each antibiotic separately
 
  df_long_sixabx <-df %>%

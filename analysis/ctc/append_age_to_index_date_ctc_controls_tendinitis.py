@@ -44,7 +44,7 @@ has_registration_1y_before_index =  (
 dataset.define_population(indexed_controls.exists_for_patient() &
                           has_registration_1y_before_index)
 
-dataset.configure_dummy_data(population_size=100000)
+dataset.configure_dummy_data(population_size=10000)
 
 dataset.index_date = indexed_controls.index_date
 
